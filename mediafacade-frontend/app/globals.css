@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background: linear-gradient(180deg, #0f172a, #000);
+  font-family: 'Inter', sans-serif;
+}
+
+.building {
+  filter: drop-shadow(0 0 20px rgba(0, 150, 255, 0.4));
+}
+
+.screen-glow {
+  box-shadow: 0 0 20px rgba(0, 200, 255, 0.4);
+}
