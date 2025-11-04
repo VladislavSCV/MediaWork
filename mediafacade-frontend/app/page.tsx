@@ -1,110 +1,68 @@
 "use client";
-
 import { useEffect, useRef, useState } from "react";
+
+type Props = { facadeId: number };
 
 const ROWS = 20;
 const COLS = 10;
 
-// дефолтный ролик
-const DEFAULT_VIDEO =
-  "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
-// заменишь на свой CDN / S3 / что угодно
-
-export default function FacadeWall() {
+export default function FacadeWall({ facadeId }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [videoSrc, setVideoSrc] = useState<string>(DEFAULT_VIDEO);
+  const [videoSrc, setVideoSrc] = useState<string>("");
 
   useEffect(() => {
-    // Подключаемся к Go-бэку по WebSocket
-    const ws = new WebSocket("ws://localhost:4000/ws/facade");
+    if (!facadeId) return;
+    const ws = new WebSocket(`ws://localhost:8080/ws/facade/${facadeId}`);
 
-    ws.onopen = () => {
-      console.log("WS connected");
-    };
-
+    ws.onopen = () => console.log("✅ Connected to facade", facadeId);
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-
-        // ожидаем формата:
-        // { "type": "content_update", "src": "https://...", "startAt": 1730650000000 }
-        if (msg.type === "content_update" && typeof msg.src === "string") {
-          setVideoSrc(msg.src);
-
+        if (msg.type === "content_update" && msg.src) {
           const v = videoRef.current;
+          setVideoSrc(msg.src);
           if (v) {
             v.src = msg.src;
-
             if (msg.startAt) {
-              const now = Date.now();
-              const diffSec = (now - msg.startAt) / 1000;
-              v.currentTime = diffSec > 0 ? diffSec : 0;
+              const diff = (Date.now() - msg.startAt) / 1000;
+              v.currentTime = diff > 0 ? diff : 0;
             }
-
-            v.play().catch(() => {
-              // браузер может блокнуть автоплей, это нормально
-              console.warn("Autoplay blocked, user interaction needed");
-            });
+            v.play().catch(() => console.warn("Autoplay blocked"));
           }
         }
       } catch (e) {
-        console.error("WS message error", e);
+        console.error("Bad WS message:", e);
       }
     };
-
-    ws.onclose = () => {
-      console.log("WS closed");
-    };
+    ws.onclose = () => console.log("🔌 WS closed");
 
     return () => ws.close();
-  }, []);
-
-  // если меняем src руками (например, первое подключение)
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.src = videoSrc;
-    v.play().catch(() => {});
-  }, [videoSrc]);
+  }, [facadeId]);
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[#050814]">
+    <div className="relative w-[1080px] h-[720px] bg-black shadow-[0_0_60px_rgba(0,255,255,0.3)] overflow-hidden">
+      <video
+        ref={videoRef}
+        src={videoSrc}
+        muted
+        loop
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+      />
       <div
-        className="relative shadow-[0_0_60px_rgba(0,0,0,0.9)]"
+        className="relative grid"
         style={{
-          width: "1080px",
-          height: "720px",
-          overflow: "hidden",
+          gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+          gridTemplateRows: `repeat(${ROWS}, 1fr)`,
         }}
       >
-        {/* один общий видеопоток */}
-        <video
-          ref={videoRef}
-          className="absolute inset-0 w-full h-full object-cover"
-          muted
-          loop
-          playsInline
-        />
-
-        {/* сетка панелей поверх видео */}
-        <div
-          className="relative grid pointer-events-none"
-          style={{
-            gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-            gridTemplateRows: `repeat(${ROWS}, 1fr)`,
-            width: "100%",
-            height: "100%",
-          }}
-        >
-          {Array.from({ length: ROWS * COLS }).map((_, i) => (
-            <div
-              key={i}
-              className="border border-[rgba(0,0,0,0.7)]"
-              // можно добавить подсветку при желании
-            />
-          ))}
-        </div>
+        {Array.from({ length: ROWS * COLS }).map((_, i) => (
+          <div
+            key={i}
+            className="border border-[rgba(0,255,255,0.15)] hover:border-cyan-400/60 transition-all duration-75"
+          />
+        ))}
       </div>
-    </main>
+    </div>
   );
 }

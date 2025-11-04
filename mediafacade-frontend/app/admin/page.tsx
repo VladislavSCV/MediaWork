@@ -1,192 +1,119 @@
 "use client";
 import { useEffect, useState } from "react";
-import {
-  getScreens,
-  getFormats,
-  getOperators,
-  createScreen,
-  deleteScreen,
-} from "@/lib/api";
-import { motion, AnimatePresence } from "framer-motion";
 
-export default function AdminPage() {
-  const [screens, setScreens] = useState<any[]>([]);
-  const [formats, setFormats] = useState<any[]>([]);
-  const [operators, setOperators] = useState<any[]>([]);
-  const [form, setForm] = useState<any>({});
-  const [showForm, setShowForm] = useState(false);
+type Facade = {
+  id: number;
+  name: string;
+  description?: string;
+  current_content_url?: string;
+};
 
-  async function reload() {
-    const [s, f, o] = await Promise.all([
-      getScreens(),
-      getFormats(),
-      getOperators(),
-    ]);
-    setScreens(s);
-    setFormats(f);
-    setOperators(o);
+export default function AdminFacades() {
+  const [facades, setFacades] = useState<Facade[]>([]);
+  const [form, setForm] = useState<Partial<Facade>>({});
+
+  // 🔹 загрузить фасады
+  async function loadFacades() {
+    const res = await fetch("http://localhost:8080/api/facades");
+    const data = await res.json();
+    setFacades(data);
   }
 
   useEffect(() => {
-    reload();
+    loadFacades();
   }, []);
 
-  async function handleSubmit(e: any) {
+  // 🔹 создать фасад
+  async function createFacade(e: React.FormEvent) {
     e.preventDefault();
-    await createScreen(form);
+    await fetch("http://localhost:8080/api/facades", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
     setForm({});
-    setShowForm(false);
-    reload();
+    loadFacades();
+  }
+
+  // 🔹 сменить видео (триггер WS)
+  async function updateVideo(id: number, src: string) {
+    await fetch(`http://localhost:8080/api/facades/${id}/content`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ src }),
+    });
+    loadFacades();
+  }
+
+  // 🔹 удалить фасад
+  async function deleteFacade(id: number) {
+    await fetch(`http://localhost:8080/api/facades/${id}`, { method: "DELETE" });
+    loadFacades();
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-[#040711] via-[#0b1222] to-[#01030a] text-gray-100 p-10">
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/black-linen.png')] opacity-20 pointer-events-none" />
-      <div className="relative z-10 max-w-6xl mx-auto space-y-8">
-        <header className="flex justify-between items-center">
-          <h1 className="text-3xl font-semibold tracking-wide text-cyan-400 drop-shadow-[0_0_10px_rgba(0,255,255,0.3)]">
-            ⚙️ Панель управления медиафасадами
-          </h1>
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-4 py-2 rounded-md bg-cyan-600 hover:bg-cyan-500 active:scale-95 transition text-white shadow-[0_0_10px_rgba(0,255,255,0.3)]"
-          >
-            ➕ Добавить экран
-          </button>
-        </header>
+    <main className="p-6 max-w-5xl mx-auto text-white">
+      <h1 className="text-3xl font-bold mb-4">🎛 Управление фасадами</h1>
 
-        {/* GRID ЭКРАНОВ */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <AnimatePresence>
-            {screens.map((s) => (
-              <motion.div
-                key={s.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="relative group bg-[#0e172a] rounded-xl border border-cyan-700/30 hover:border-cyan-400/50 transition overflow-hidden shadow-lg hover:shadow-cyan-400/30"
-              >
-                <div className="absolute inset-0 opacity-5 group-hover:opacity-10 transition bg-[radial-gradient(circle_at_center,rgba(0,255,255,0.4),transparent_60%)]" />
-                <div className="p-5 space-y-3">
-                  <h2 className="text-lg font-semibold text-cyan-300">
-                    #{s.id} — {s.format_name}
-                  </h2>
-                  <p className="text-sm text-gray-400">
-                    Оператор: <span className="text-gray-200">{s.operator_name}</span>
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    Размер: <span className="text-gray-200">{s.width}×{s.height}px</span>
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    Хронометраж: <span className="text-gray-200">{s.duration}s</span>
-                  </p>
-                  {s.comment && (
-                    <p className="text-xs text-gray-500 italic">
-                      “{s.comment}”
-                    </p>
-                  )}
-                  <div className="pt-3 flex justify-end">
-                    <button
-                      onClick={async () => {
-                        await deleteScreen(s.id);
-                        reload();
-                      }}
-                      className="px-3 py-1 text-sm text-red-400 border border-red-500/40 rounded hover:bg-red-500/20 active:scale-95 transition"
-                    >
-                      Удалить
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </section>
-      </div>
+      {/* === Добавление фасада === */}
+      <form onSubmit={createFacade} className="grid gap-3 bg-gray-900 p-4 rounded-lg mb-8">
+        <input
+          className="p-2 rounded bg-gray-800 border border-gray-700"
+          placeholder="Название фасада"
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          required
+        />
+        <input
+          className="p-2 rounded bg-gray-800 border border-gray-700"
+          placeholder="Описание (необязательно)"
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+        />
+        <button className="bg-blue-600 hover:bg-blue-700 transition p-2 rounded">
+          ➕ Добавить фасад
+        </button>
+      </form>
 
-      {/* МОДАЛКА ДОБАВЛЕНИЯ */}
-      <AnimatePresence>
-        {showForm && (
-          <motion.div
-            className="fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.form
-              onSubmit={handleSubmit}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#0c1424] border border-cyan-600/30 rounded-xl shadow-[0_0_30px_rgba(0,255,255,0.15)] p-8 w-[400px] space-y-4 relative"
-            >
-              <h2 className="text-xl font-semibold text-cyan-400 mb-4">
-                ➕ Добавить новый экран
-              </h2>
-
-              <select
-                className="w-full bg-transparent border border-cyan-600/40 p-2 rounded-md text-sm outline-none focus:border-cyan-400"
-                onChange={(e) => setForm({ ...form, format_id: +e.target.value })}
-              >
-                <option>Выбери формат</option>
-                {formats.map((f) => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
-
-              <select
-                className="w-full bg-transparent border border-cyan-600/40 p-2 rounded-md text-sm outline-none focus:border-cyan-400"
-                onChange={(e) => setForm({ ...form, operator_id: +e.target.value })}
-              >
-                <option>Выбери оператора</option>
-                {operators.map((o) => (
-                  <option key={o.id} value={o.id}>{o.name}</option>
-                ))}
-              </select>
-
-              <div className="grid grid-cols-2 gap-2">
-                <input type="number" placeholder="Ширина"
-                  className="bg-transparent border border-cyan-600/40 p-2 rounded text-sm"
-                  onChange={(e) => setForm({ ...form, width: +e.target.value })} />
-                <input type="number" placeholder="Высота"
-                  className="bg-transparent border border-cyan-600/40 p-2 rounded text-sm"
-                  onChange={(e) => setForm({ ...form, height: +e.target.value })} />
-              </div>
-
-              <input type="number" placeholder="Хронометраж (сек)"
-                className="w-full bg-transparent border border-cyan-600/40 p-2 rounded text-sm"
-                onChange={(e) => setForm({ ...form, duration: +e.target.value })} />
-
-              <input type="number" placeholder="Размер шрифта (px)"
-                className="w-full bg-transparent border border-cyan-600/40 p-2 rounded text-sm"
-                onChange={(e) => setForm({ ...form, font_size: +e.target.value })} />
-
-              <input placeholder="Комментарий"
-                className="w-full bg-transparent border border-cyan-600/40 p-2 rounded text-sm"
-                onChange={(e) => setForm({ ...form, comment: e.target.value })} />
-
-              <input placeholder="Ссылка на ТТ"
-                className="w-full bg-transparent border border-cyan-600/40 p-2 rounded text-sm"
-                onChange={(e) => setForm({ ...form, tt_link: e.target.value })} />
-
-              <div className="flex justify-end gap-3 pt-2">
+      {/* === Таблица фасадов === */}
+      <table className="w-full text-sm border border-gray-800">
+        <thead className="bg-gray-800">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Название</th>
+            <th className="p-2 text-left">Описание</th>
+            <th className="p-2 text-left">Контент</th>
+            <th className="p-2 text-left">Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {facades.map((f) => (
+            <tr key={f.id} className="border-t border-gray-800">
+              <td className="p-2">{f.id}</td>
+              <td className="p-2 font-semibold">{f.name}</td>
+              <td className="p-2">{f.description || "—"}</td>
+              <td className="p-2 text-cyan-400 break-all">
+                {f.current_content_url || "Нет видео"}
+              </td>
+              <td className="p-2 flex gap-2">
+                <input
+                  className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs"
+                  placeholder="URL видео"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      updateVideo(f.id, (e.target as HTMLInputElement).value);
+                    }
+                  }}
+                />
                 <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="px-3 py-2 text-gray-400 hover:text-white"
+                  onClick={() => deleteFacade(f.id)}
+                  className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-xs"
                 >
-                  Отмена
+                  Удалить
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-cyan-600 rounded-md hover:bg-cyan-500 text-white font-medium"
-                >
-                  Сохранить
-                </button>
-              </div>
-            </motion.form>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </main>
   );
 }

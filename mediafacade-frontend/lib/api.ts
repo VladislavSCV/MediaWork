@@ -1,5 +1,15 @@
 export const API_URL = "http://localhost:5000/api";
 
+export async function getFacades() {
+  const res = await fetch("http://localhost:8080/api/facades");
+  return res.json();
+}
+
+export async function getFacade(id: number) {
+  const res = await fetch(`http://localhost:8080/api/facades/${id}`);
+  return res.json();
+}
+
 export async function getScreens() {
   const res = await fetch(`${API_URL}/screens`, { cache: "no-store" });
   return res.json();
