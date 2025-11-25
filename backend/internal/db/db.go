@@ -20,7 +20,7 @@ func Init() error {
 
 	url := os.Getenv("DATABASE_URL")
 	if url == "" {
-		url = "postgres://postgres.apcmdusrbsshqnoewhpr:XNGbcokQ4QjLfHxs@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
+		url = "postgres://postgres.yaadnfxwvdhnxwqheybz:3PMxdwXEUtMxOamr@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
 	}
 
 	var err error

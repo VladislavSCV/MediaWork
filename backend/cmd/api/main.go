@@ -19,32 +19,72 @@ func main() {
 	defer db.DB.Close()
 
 	hub := ws.NewHub()
-
 	facadeHandler := &api.FacadeHandler{Hub: hub}
+	billing := api.NewBillingHandler()
 
 	r := chi.NewRouter()
+
+	// CORS
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins: []string{"*"},
 		AllowedMethods: []string{"GET", "POST", "DELETE", "PATCH"},
 		AllowedHeaders: []string{"Content-Type"},
 	}))
 
-	// REST
-	r.Post("/api/facades/{id}/content", facadeHandler.UpdateFacadeContent)
+	//
+	// ─── API v1 ────────────────────────────────────────────────────────────────
+	//
 
-	// Остальные API
-	r.Get("/api/facades", api.GetFacades)
-	r.Post("/api/facades", api.CreateFacade)
-	r.Delete("/api/facades/{id}", api.DeleteFacade)
-	r.Post("/api/facades/{id}/content", facadeHandler.UpdateFacadeContent)
-	r.Get("/api/facades", api.GetFacades)
-	r.Get("/api/screens", api.GetScreens)
-	r.Post("/api/screens", api.CreateScreen)
-	r.Delete("/api/screens/{id}", api.DeleteScreen)
-	r.Get("/api/formats", api.GetFormats)
-	r.Get("/api/operators", api.GetOperators)
+	r.Route("/api", func(r chi.Router) {
 
-	// WS
+		// Billing module
+		r.Route("/billing", func(r chi.Router) {
+			// Advertisers
+			r.Get("/advertisers", billing.GetAdvertisers)
+			r.Post("/advertisers", billing.CreateAdvertiser)
+
+			// Tariffs
+			r.Post("/tariffs", billing.CreateTariff)
+
+			// Campaigns
+			r.Post("/campaigns", billing.CreateCampaign)
+			r.Post("/campaigns/{id}/invoice", billing.IssueInvoice)
+		})
+
+		// Portal (личный кабинет рекламодателя)
+		r.Route("/portal", func(r chi.Router) {
+			r.Post("/login", api.PortalLogin)
+			r.Get("/me", api.PortalMe)
+			r.Get("/campaigns", api.PortalCampaigns)
+			r.Get("/campaigns/{id}", api.PortalCampaignByID)
+			r.Get("/invoices", api.PortalInvoices)
+			r.Get("/stats", api.PortalStats)
+			r.Get("/stats/chart", api.PortalStatsChart)
+			r.Post("/upload", api.PortalUpload)
+			r.Post("/invoices/{id}/pay", api.PortalPayInvoice)
+			r.Post("/campaigns", api.PortalCreateCampaign)
+
+		})
+
+		// Facades
+		r.Get("/facades", api.GetFacades)
+		r.Post("/facades", api.CreateFacade)
+		r.Delete("/facades/{id}", api.DeleteFacade)
+		r.Post("/facades/{id}/content", facadeHandler.UpdateFacadeContent)
+
+		// Screens
+		r.Get("/screens", api.GetScreens)
+		r.Post("/screens", api.CreateScreen)
+		r.Delete("/screens/{id}", api.DeleteScreen)
+
+		// Formats & Operators
+		r.Get("/formats", api.GetFormats)
+		r.Get("/operators", api.GetOperators)
+	})
+
+	//
+	// ─── WebSocket ─────────────────────────────────────────────────────────────
+	//
 	r.Get("/ws/facade/{id}", hub.HandleWS)
 
 	log.Println("🚀 Server running on :8080")
