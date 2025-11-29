@@ -1,16 +1,12 @@
 package api
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-
 	"github/VladislavSCV/MediaWork/internal/db"
-	"github/VladislavSCV/MediaWork/internal/models"
 )
 
 type portalCreateCampaignDTO struct {
@@ -21,6 +17,50 @@ type portalCreateCampaignDTO struct {
 	EndAt       string `json:"end_at"`
 	TariffID    int    `json:"tariff_id"`
 	ScreenIDs   []int  `json:"screen_ids"`
+}
+
+type portalCampaignItem struct {
+	ID         int     `json:"id"`
+	Name       string  `json:"name"`
+	Status     string  `json:"status"`
+	TotalPrice float64 `json:"total_price"`
+	StartAt    string  `json:"start_at"`
+	EndAt      string  `json:"end_at"`
+}
+
+func PortalCampaigns(w http.ResponseWriter, r *http.Request) {
+	advID, err := getAdvertiserIDFromHeader(r)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	rows, err := db.DB.Query(`
+        SELECT id, name, status, total_price, 
+               to_char(start_at, 'YYYY-MM-DD"T"HH24:MI:SS'), 
+               to_char(end_at,   'YYYY-MM-DD"T"HH24:MI:SS')
+        FROM campaigns
+        WHERE advertiser_id = $1
+        ORDER BY id DESC
+	`, advID)
+	if err != nil {
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var res []portalCampaignItem
+
+	for rows.Next() {
+		var c portalCampaignItem
+		if err := rows.Scan(&c.ID, &c.Name, &c.Status, &c.TotalPrice, &c.StartAt, &c.EndAt); err != nil {
+			http.Error(w, "scan failed", http.StatusInternalServerError)
+			return
+		}
+		res = append(res, c)
+	}
+
+	writeJSON(w, http.StatusOK, res)
 }
 
 func PortalCreateCampaign(w http.ResponseWriter, r *http.Request) {

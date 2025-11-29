@@ -13,25 +13,43 @@ import {
   Bar,
 } from "recharts";
 
+/* --------------------------------------------------
+   FIX: Компонент монтируется, размеры становятся > 0
+--------------------------------------------------- */
+export function useHasMounted() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  return mounted;
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [chart, setChart] = useState<any[]>([]);
+  const mounted = useHasMounted();
 
   useEffect(() => {
     async function load() {
       const token = localStorage.getItem("advertiser_token") || "";
 
-      const s = await fetch("/api/portal/stats", {
+      const s = await fetch("http://localhost:8080/api/portal/stats", {
         headers: { Authorization: token },
       }).then((r) => r.json());
 
-      const c = await fetch("/api/portal/stats/chart", {
+      const cRaw = await fetch("http://localhost:8080/api/portal/stats/chart", {
         headers: { Authorization: token },
       }).then((r) => r.json());
+
+      // FIX: чтобы не было null и crash
+      const c = Array.isArray(cRaw) ? cRaw : [];
 
       setStats(s);
       setChart(c);
     }
+
     load();
   }, []);
 
@@ -64,15 +82,24 @@ export default function DashboardPage() {
         <h2 className="text-xl mb-4">Playbacks (last 7 days)</h2>
 
         <div className="w-full h-[280px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chart}>
-              <Line type="monotone" dataKey="events" stroke="#00eaff" strokeWidth={2} />
-              <CartesianGrid stroke="#333" strokeDasharray="5 5" />
-              <XAxis dataKey="day" />
-              <YAxis />
-              <Tooltip />
-            </LineChart>
-          </ResponsiveContainer>
+          {mounted ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chart}>
+                <Line
+                  type="monotone"
+                  dataKey="events"
+                  stroke="#00eaff"
+                  strokeWidth={2}
+                />
+                <CartesianGrid stroke="#333" strokeDasharray="5 5" />
+                <XAxis dataKey="day" />
+                <YAxis />
+                <Tooltip />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="opacity-40">Loading chart...</div>
+          )}
         </div>
       </div>
 
@@ -81,15 +108,19 @@ export default function DashboardPage() {
         <h2 className="text-xl mb-4">Money Spent</h2>
 
         <div className="w-full h-[280px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chart}>
-              <CartesianGrid stroke="#333" strokeDasharray="5 5" />
-              <XAxis dataKey="day" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="spent" fill="#4ade80" />
-            </BarChart>
-          </ResponsiveContainer>
+          {mounted ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chart}>
+                <CartesianGrid stroke="#333" strokeDasharray="5 5" />
+                <XAxis dataKey="day" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="spent" fill="#4ade80" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="opacity-40">Loading chart...</div>
+          )}
         </div>
       </div>
     </div>

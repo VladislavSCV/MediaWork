@@ -10,18 +10,23 @@ export default function LoginPage() {
   const [pass, setPass] = useState("");
 
   async function doLogin() {
-    const res = await fetch("/api/portal/login", {
+    console.log("doLogin called with", email, pass);
+    const res = await fetch("http://localhost:8080/api/portal/login", {
       method: "POST",
       body: JSON.stringify({ email, password: pass }),
       headers: { "Content-Type": "application/json" },
     });
 
+    console.log("response", res);
+
     if (!res.ok) {
+      console.log("invalid login");
       alert("Invalid login");
       return;
     }
 
     const data = await res.json();
+    console.log("data", data);
     localStorage.setItem("advertiser_token", data.token);
     router.push("/portal/dashboard");
   }

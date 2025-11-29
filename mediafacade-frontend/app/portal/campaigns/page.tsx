@@ -1,107 +1,93 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 export default function CampaignsPage() {
-  const [items, setItems] = useState<any[]>([]);
-  const [uploadUrl, setUploadUrl] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newDuration, setNewDuration] = useState(10);
-  const [newTariff, setNewTariff] = useState(1);
-  const [newStart, setNewStart] = useState("");
-  const [newEnd, setNewEnd] = useState("");
-  const [newScreens, setNewScreens] = useState<number[]>([]);
-
-
-  async function uploadFile(e: any) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-
-    const form = new FormData();
-    form.append("file", file);
-
-    const token = localStorage.getItem("advertiser_token") || "";
-
-    const res = await fetch("/api/portal/upload", {
-      method: "POST",
-      headers: { Authorization: token },
-      body: form,
-    });
-
-    const data = await res.json();
-    setUploadUrl(data.url);
-    setUploading(false);
-  }
+  const [items, setItems] = useState<any[]>([]); // ✨ важное исправление: [] вместо null
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/portal/campaigns", {
-      headers: { Authorization: localStorage.getItem("advertiser_token") || "" },
-    })
-      .then((r) => r.json())
-      .then(setItems);
+    async function load() {
+      try {
+        console.log("CampaignsPage: loading campaigns...");
+        const token = localStorage.getItem("advertiser_token") || "";
+
+        const data = await fetch("http://localhost:8080/api/portal/campaigns", {
+          headers: { Authorization: token },
+        }).then((r) => r.json());
+
+        console.log("CampaignsPage: received campaigns:", data);
+
+        setItems(Array.isArray(data) ? data : []); // защита
+      } catch (err) {
+        console.error("CampaignsPage: failed to load campaigns:", err);
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
   }, []);
 
+  if (loading) return <div className="opacity-60">Loading...</div>;
+
+  console.log("CampaignsPage: rendering campaigns:", items);
+
   return (
-    <div>
-      {/* UPLOAD BOX */}
-      <div className="mb-6 p-4 bg-[#11161d] rounded-xl border border-white/10">
-        <div className="font-semibold mb-2">Upload new media</div>
-
-        <input
-          type="file"
-          onChange={uploadFile}
-          className="text-sm opacity-80"
-        />
-
-        {uploading && <div className="text-cyan-400 mt-2">Uploading...</div>}
-        {uploadUrl && (
-          <div className="mt-2 text-green-400">
-            Uploaded: <a href={uploadUrl}>{uploadUrl}</a>
-          </div>
-        )}
+    <div className="space-y-10">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-semibold">Campaigns</h1>
+        <Link
+          href="/portal/campaigns/create"
+          className="px-4 py-2 bg-cyan-600 rounded-lg hover:bg-cyan-700"
+        >
+          + Create Campaign
+        </Link>
       </div>
-      <button
-      onClick={() => setShowModal(true)}
-      className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-md text-white mb-6"
-    >
-      + Create Campaign
-    </button>
 
-
-      {/* CAMPAIGNS TABLE */}
-      <h1 className="text-3xl font-semibold mb-6">Your Campaigns</h1>
-
-      <table className="w-full text-left border-separate border-spacing-y-2">
-        <thead className="opacity-60 text-sm">
-          <tr>
-            <th>Name</th>
-            <th>Status</th>
-            <th>Dates</th>
-            <th>Price</th>
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="text-left text-sm opacity-60 border-b border-white/10">
+            <th className="p-3">Name</th>
+            <th className="p-3">Status</th>
+            <th className="p-3">Price</th>
+            <th className="p-3">Dates</th>
+            <th className="p-3 w-20"></th>
           </tr>
         </thead>
 
         <tbody>
+          {/* если пусто */}
+          {items.length === 0 && (
+            <tr>
+              <td colSpan={5} className="text-center py-8 opacity-60">
+                No campaigns yet
+              </td>
+            </tr>
+          )}
+
+          {/* рендер списка */}
           {items.map((c) => (
             <tr
               key={c.id}
               className="bg-[#11161d] hover:bg-[#141a22] border border-white/10 rounded-xl"
             >
-              <td className="px-4 py-3">
-                <Link className="hover:text-cyan-400" href={`/portal/campaigns/${c.id}`}>
-                  {c.name}
+              <td className="p-3">{c.name}</td>
+              <td className="p-3">{c.status}</td>
+              <td className="p-3">{c.total_price} ₽</td>
+              <td className="p-3">
+                {c.start_at?.slice(0, 10)} → {c.end_at?.slice(0, 10)}
+              </td>
+              <td className="p-3 text-right">
+                <Link
+                  href={`/portal/campaigns/${c.id}`}
+                  className="text-cyan-400 hover:underline"
+                >
+                  View →
                 </Link>
               </td>
-              <td className="px-4 py-3">{c.status}</td>
-              <td className="px-4 py-3">
-                {c.start_at.slice(0, 10)} → {c.end_at.slice(0, 10)}
-              </td>
-              <td className="px-4 py-3">{c.total_price ?? "-"} ₽</td>
             </tr>
           ))}
         </tbody>

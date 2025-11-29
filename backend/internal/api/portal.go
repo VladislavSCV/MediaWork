@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -29,11 +30,11 @@ func getAdvertiserIDFromHeader(r *http.Request) (int, error) {
 	return id, nil
 }
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
+// func writeJSON(w http.ResponseWriter, status int, v any) {
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.WriteHeader(status)
+// 	_ = json.NewEncoder(w).Encode(v)
+// }
 
 // ─── LOGIN ─────────────────────────────────────────────────────────────────────
 
@@ -50,37 +51,42 @@ func PortalLogin(w http.ResponseWriter, r *http.Request) {
 	var req portalLoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		log.Printf("login failed for email %s: %v\n", req.Email, err)
 		return
 	}
 	if req.Email == "" || req.Password == "" {
 		http.Error(w, "email and password required", http.StatusBadRequest)
+		log.Printf("login failed for email %s: email and password required\n", req.Email)
 		return
 	}
 
 	var (
-		id           int
-		storedPass   sql.NullString
-		name         sql.NullString
-		contact      sql.NullString
-		email        sql.NullString
+		id         int
+		storedPass sql.NullString
+		name       sql.NullString
+		contact    sql.NullString
+		email      sql.NullString
 	)
 	err := db.DB.QueryRow(
-		`SELECT id, password_hash, name, contact_person, email 
+		`SELECT id, password, name, contact_person, email 
 		 FROM advertisers 
 		 WHERE email = $1`,
 		req.Email,
 	).Scan(&id, &storedPass, &name, &contact, &email)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			log.Printf("login failed for email %s: invalid credentials\n", req.Email)
 			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 			return
 		}
+		log.Printf("login failed for email %s: %v\n", req.Email, err)
 		http.Error(w, "login failed", http.StatusInternalServerError)
 		return
 	}
 
-	// Временная логика: пароль в открытом виде
+	// Временно: пароль в открытом виде
 	if !storedPass.Valid || storedPass.String != req.Password {
+		log.Printf("login failed for email %s: invalid credentials\n", req.Email)
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
@@ -129,53 +135,53 @@ func PortalMe(w http.ResponseWriter, r *http.Request) {
 
 // ─── CAMPAIGNS LIST ───────────────────────────────────────────────────────────
 
-func PortalCampaigns(w http.ResponseWriter, r *http.Request) {
-	advID, err := getAdvertiserIDFromHeader(r)
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
+// func PortalCampaigns(w http.ResponseWriter, r *http.Request) {
+// 	advID, err := getAdvertiserIDFromHeader(r)
+// 	if err != nil {
+// 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+// 		return
+// 	}
 
-	rows, err := db.DB.Query(
-		`SELECT 
-			id, advertiser_id, name, media_url, duration_sec, 
-			start_at, end_at, created_at, status, tariff_id, total_price, billed
-		 FROM campaigns
-		 WHERE advertiser_id = $1
-		 ORDER BY created_at DESC`,
-		advID,
-	)
-	if err != nil {
-		http.Error(w, "failed to fetch campaigns", http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
+// 	rows, err := db.DB.Query(
+// 		`SELECT 
+// 			id, advertiser_id, name, media_url, duration_sec, 
+// 			start_at, end_at, created_at, status, tariff_id, total_price, billed
+// 		 FROM campaigns
+// 		 WHERE advertiser_id = $1
+// 		 ORDER BY created_at DESC`,
+// 		advID,
+// 	)
+// 	if err != nil {
+// 		http.Error(w, "failed to fetch campaigns", http.StatusInternalServerError)
+// 		return
+// 	}
+// 	defer rows.Close()
 
-	var res []models.Campaign
-	for rows.Next() {
-		var c models.Campaign
-		if err := rows.Scan(
-			&c.ID,
-			&c.AdvertiserID,
-			&c.Name,
-			&c.MediaURL,
-			&c.DurationSec,
-			&c.StartAt,
-			&c.EndAt,
-			&c.CreatedAt,
-			&c.Status,
-			&c.TariffID,
-			&c.TotalPrice,
-			&c.Billed,
-		); err != nil {
-			http.Error(w, "scan error", http.StatusInternalServerError)
-			return
-		}
-		res = append(res, c)
-	}
+// 	var res []models.Campaign
+// 	for rows.Next() {
+// 		var c models.Campaign
+// 		if err := rows.Scan(
+// 			&c.ID,
+// 			&c.AdvertiserID,
+// 			&c.Name,
+// 			&c.MediaURL,
+// 			&c.DurationSec,
+// 			&c.StartAt,
+// 			&c.EndAt,
+// 			&c.CreatedAt,
+// 			&c.Status,
+// 			&c.TariffID,
+// 			&c.TotalPrice,
+// 			&c.Billed,
+// 		); err != nil {
+// 			http.Error(w, "scan error", http.StatusInternalServerError)
+// 			return
+// 		}
+// 		res = append(res, c)
+// 	}
 
-	writeJSON(w, http.StatusOK, res)
-}
+// 	writeJSON(w, http.StatusOK, res)
+// }
 
 // ─── CAMPAIGN BY ID ──────────────────────────────────────────────────────────
 
@@ -320,7 +326,6 @@ func PortalStats(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, stats)
 }
 
-
 // ─── STATS CHART DATA ─────────────────────────────────────────────────────────
 
 type portalChartPoint struct {
@@ -367,7 +372,6 @@ func PortalStatsChart(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, res)
 }
-
 
 func PortalPayInvoice(w http.ResponseWriter, r *http.Request) {
 	advID, err := getAdvertiserIDFromHeader(r)

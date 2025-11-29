@@ -6,7 +6,7 @@ export default function ProfilePage() {
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
-    fetch(`/api/portal/me`, {
+    fetch(`http://localhost:8080/api/portal/me`, {
       headers: { Authorization: localStorage.getItem("advertiser_token") || "" },
     })
       .then((r) => r.json())

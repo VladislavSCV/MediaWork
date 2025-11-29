@@ -7,7 +7,7 @@ export default function InvoicesPage() {
   const [items, setItems] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch(`/api/portal/invoices`, {
+    fetch(`http://localhost:8080/api/portal/invoices`, {
       headers: { Authorization: localStorage.getItem("advertiser_token") || "" },
     })
       .then((r) => r.json())
@@ -17,13 +17,13 @@ export default function InvoicesPage() {
   async function pay(id: number) {
   const token = localStorage.getItem("advertiser_token") || "";
 
-  await fetch(`/api/portal/invoices/${id}/pay`, {
+  await fetch(`http://localhost:8080/api/portal/invoices/${id}/pay`, {
     method: "POST",
     headers: { Authorization: token },
   });
 
   // обновляем таблицу
-  const updated = await fetch("/api/portal/invoices", {
+  const updated = await fetch("http://localhost:8080/api/portal/invoices", {
     headers: { Authorization: token },
   }).then((r) => r.json());
 

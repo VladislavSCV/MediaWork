@@ -5,6 +5,7 @@
 body {
   background: linear-gradient(180deg, #0f172a, #000);
   font-family: 'Inter', sans-serif;
+  color: #fff;
 }
 
 .building {

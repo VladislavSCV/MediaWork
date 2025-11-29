@@ -26,10 +26,18 @@ func main() {
 
 	// CORS
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{"GET", "POST", "DELETE", "PATCH"},
-		AllowedHeaders: []string{"Content-Type"},
+		AllowedOrigins:   []string{"http://localhost:3000", "*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		ExposedHeaders:   []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           300,
 	}))
+
+	r.Options("/*", func(w http.ResponseWriter, r *http.Request) {
+    	w.WriteHeader(http.StatusOK)
+	})
+
 
 	//
 	// ─── API v1 ────────────────────────────────────────────────────────────────
@@ -63,6 +71,7 @@ func main() {
 			r.Post("/upload", api.PortalUpload)
 			r.Post("/invoices/{id}/pay", api.PortalPayInvoice)
 			r.Post("/campaigns", api.PortalCreateCampaign)
+			r.Get("/campaigns", api.PortalCampaigns)
 
 		})
 
