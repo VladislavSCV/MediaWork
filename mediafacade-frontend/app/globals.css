@@ -2,16 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background: linear-gradient(180deg, #0f172a, #000);
-  font-family: 'Inter', sans-serif;
-  color: #fff;
+/* НИКАКИХ * { border:0 }  */
+/* НИКАКИХ background:transparent */
+/* НИКАКИХ reset-ов кроме box-sizing */
+
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
-.building {
-  filter: drop-shadow(0 0 20px rgba(0, 150, 255, 0.4));
+html, body {
+  padding: 0;
+  margin: 0;
+  background: transparent;
 }
 
-.screen-glow {
-  box-shadow: 0 0 20px rgba(0, 200, 255, 0.4);
+img, video {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }

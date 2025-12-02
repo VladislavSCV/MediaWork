@@ -51,32 +51,33 @@ func DeleteFacade(w http.ResponseWriter, r *http.Request) {
 
 // TEMP: без БД, просто WS + лог
 func (h *FacadeHandler) UpdateFacadeContent(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		writeErr(w, err, 400)
-		return
-	}
+    idStr := chi.URLParam(r, "id")
+    id, err := strconv.Atoi(idStr)
+    if err != nil {
+        writeErr(w, err, 400)
+        return
+    }
 
-	var body struct {
-		Src string `json:"src"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeErr(w, err, 400)
-		return
-	}
+    var body struct {
+        Src string `json:"src"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+        writeErr(w, err, 400)
+        return
+    }
 
-	fmt.Println("📨 HTTP content update for facade", id, "src=", body.Src)
+    fmt.Println("📨 HTTP content update for facade", id, "src=", body.Src)
 
-	payload, _ := json.Marshal(map[string]any{
-		"type":    "content_update",
-		"src":     body.Src,
-		"startAt": time.Now().UnixMilli(),
-	})
+    payload, _ := json.Marshal(map[string]any{
+        "type":    "content_update",
+        "src":     body.Src,
+        "startAt": time.Now().UnixMilli(),
+    })
 
-	h.Hub.Broadcast(id, payload)
+    // 🔥 новое имя метода!
+    h.Hub.BroadcastToFacade(id, payload)
 
-	writeJSON(w, 200, map[string]string{"status": "broadcasted"})
+    writeJSON(w, 200, map[string]string{"status": "broadcasted"})
 }
 
 // Получение списка фасадов

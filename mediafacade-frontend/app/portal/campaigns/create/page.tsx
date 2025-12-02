@@ -17,7 +17,14 @@ export default function CreateCampaignPage() {
   const [tariffs, setTariffs] = useState<any[]>([]);
   const [screens, setScreens] = useState<any[]>([]);
 
-  // Загрузка тарифов и экранов
+  // Upload states
+  const [uploadPreview, setUploadPreview] = useState<string>("");
+  const [mediaInfo, setMediaInfo] = useState<any>(null);
+  const [uploading, setUploading] = useState(false);
+
+  //
+  // LOAD TARIFFS + SCREENS
+  //
   useEffect(() => {
     async function load() {
       const t = await fetch("http://localhost:8080/api/billing/tariffs").then((r) => r.json());
@@ -29,6 +36,49 @@ export default function CreateCampaignPage() {
     load();
   }, []);
 
+  //
+  // UPLOAD MEDIA FILE
+  //
+  async function uploadFile(e: any) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  setUploading(true);
+  setUploadPreview("");
+  setMediaInfo(null);
+
+  const fd = new FormData();
+  fd.append("file", file);
+
+  const token = localStorage.getItem("advertiser_token") || "";
+
+  const res = await fetch("http://localhost:8080/api/portal/upload", {
+    method: "POST",
+    headers: { Authorization: token },
+    body: fd,
+  });
+
+  if (!res.ok) {
+    alert("Upload failed");
+    setUploading(false);
+    return;
+  }
+
+  const json = await res.json();
+  console.log(json.preview);
+
+  setUploadPreview(json.preview);
+  setMediaInfo(json);
+
+  setMediaUrl(json.url);
+  setDuration(json.duration);
+
+  setUploading(false);
+}
+
+  //
+  // SUBMIT CAMPAIGN
+  //
   async function submit() {
     const token = localStorage.getItem("advertiser_token") || "";
 
@@ -41,8 +91,6 @@ export default function CreateCampaignPage() {
       tariff_id: tariffId,
       screen_ids: screenIDs,
     };
-
-    console.log("Sending:", body);
 
     const res = await fetch("http://localhost:8080/api/portal/campaigns", {
       method: "POST",
@@ -66,9 +114,9 @@ export default function CreateCampaignPage() {
     <div className="space-y-10">
       <h1 className="text-3xl font-semibold">Create Campaign</h1>
 
-      {/* FORM */}
       <div className="space-y-6 bg-[#11161d] p-6 rounded-xl border border-white/10">
 
+        {/* NAME */}
         <div>
           <label className="block mb-2 opacity-70">Name</label>
           <input
@@ -78,6 +126,38 @@ export default function CreateCampaignPage() {
           />
         </div>
 
+        {/* UPLOAD */}
+        <div>
+          <label className="block mb-2 opacity-70">Upload Media</label>
+          <input
+            type="file"
+            accept="video/*,image/*"
+            onChange={uploadFile}
+            className="w-full"
+          />
+        </div>
+
+        {uploading && <div className="opacity-60">Uploading...</div>}
+
+        {/* Preview */}
+        {uploadPreview && (
+          <div className="mt-4">
+            <img
+              src={`http://localhost:8080${uploadPreview}`}
+              className="rounded-lg w-64 border border-white/10"
+            />
+
+          </div>
+        )}
+
+        {/* Media info */}
+        {mediaInfo && (
+          <pre className="text-sm bg-black/20 p-4 rounded-xl border border-white/10 mt-4">
+            {JSON.stringify(mediaInfo, null, 2)}
+          </pre>
+        )}
+
+        {/* Media URL */}
         <div>
           <label className="block mb-2 opacity-70">Media URL</label>
           <input
@@ -87,6 +167,7 @@ export default function CreateCampaignPage() {
           />
         </div>
 
+        {/* Duration */}
         <div>
           <label className="block mb-2 opacity-70">Duration (sec)</label>
           <input
@@ -97,6 +178,7 @@ export default function CreateCampaignPage() {
           />
         </div>
 
+        {/* TARIFF */}
         <div>
           <label className="block mb-2 opacity-70">Tariff</label>
           <select
@@ -113,6 +195,7 @@ export default function CreateCampaignPage() {
           </select>
         </div>
 
+        {/* SCREENS */}
         <div>
           <label className="block mb-2 opacity-70">Screens</label>
           <div className="space-y-2">
@@ -135,7 +218,7 @@ export default function CreateCampaignPage() {
           </div>
         </div>
 
-        {/* dates */}
+        {/* DATES */}
         <div>
           <label className="block mb-2 opacity-70">Start at</label>
           <input

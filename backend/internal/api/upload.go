@@ -3,14 +3,17 @@ package api
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 )
 
-// POST /api/portal/upload
+type uploadResponse struct {
+	URL string `json:"url"`
+}
+
 func PortalUpload(w http.ResponseWriter, r *http.Request) {
 	advID, err := getAdvertiserIDFromHeader(r)
 	if err != nil {
@@ -18,54 +21,63 @@ func PortalUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = r.ParseMultipartForm(100 << 20) // 100MB limit
-	if err != nil {
-		http.Error(w, "bad multipart", http.StatusBadRequest)
-		return
-	}
+	// Отладка: текущая директория
+	cwd, _ := os.Getwd()
+	log.Printf("Current working directory: %s", cwd)
+	log.Printf("Trying to create/uploads directory...")
 
+	// читаем файл
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "file missing", http.StatusBadRequest)
+		http.Error(w, "file read error", 400)
 		return
 	}
 	defer file.Close()
 
-	ext := filepath.Ext(header.Filename)
-	if ext == "" {
-		http.Error(w, "invalid file", http.StatusBadRequest)
+	// Изменяем путь на корректный
+	uploadsDir := "./uploads"
+	log.Printf("Creating directory: %s", uploadsDir)
+
+	// создаём папку
+	if err := os.MkdirAll(uploadsDir, 0777); err != nil {
+		log.Printf("Error creating directory: %v", err)
+		http.Error(w, "failed to create upload directory", 500)
 		return
 	}
 
-	// путь вида: uploads/adv_2/video_17323293.mp4
-	ts := strconv.FormatInt(time.Now().UnixNano(), 10)
-	filename := fmt.Sprintf("adv_%d_%s%s", advID, ts, ext)
-	savePath := filepath.Join("mediafacade-frontend", "public", "uploads", filename)
+	// финальное имя файла: advid_timestamp_original.ext
+	filename := fmt.Sprintf("adv%d_%d_%s", advID, time.Now().Unix(), header.Filename)
+	filepath := filepath.Join(uploadsDir, filename) // Используем Join для кроссплатформенности
+	log.Printf("Saving file to: %s", filepath)
 
-	// создаём папку uploads, если нет
-	os.MkdirAll("uploads", os.ModePerm)
-
-	out, err := os.Create(savePath)
+	// сохраняем файл
+	out, err := os.Create(filepath)
 	if err != nil {
-		http.Error(w, "save failed", http.StatusInternalServerError)
+		log.Printf("Error creating file: %v", err)
+		http.Error(w, "failed to create file", 500)
 		return
 	}
 	defer out.Close()
 
 	_, err = io.Copy(out, file)
 	if err != nil {
-		http.Error(w, "write failed", http.StatusInternalServerError)
+		log.Printf("Error copying file: %v", err)
+		http.Error(w, "failed to save file", 500)
 		return
 	}
 
-	// Формируем URL (Next.js статика)
-	url := "/uploads/" + filename
+	// простейший анализ медиа
+	duration := 10
 
-	json := fmt.Sprintf(`{"url":"%s"}`, url)
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(json))
+	preview := "/api/portal/uploads/" + filename
+	url := preview
 
-	fmt.Println("Uploaded:", filename, "by advertiser", advID)
+	log.Printf("File saved successfully. Preview URL: %s", preview)
 
-	// Записывать в campaigns не будем — для этого будет отдельный endpoint
+	writeJSON(w, 200, map[string]any{
+		"status":   "ok",
+		"url":      url,
+		"preview":  preview,
+		"duration": duration,
+	})
 }
