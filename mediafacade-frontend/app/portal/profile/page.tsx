@@ -198,8 +198,8 @@ function SecuritySettings({ notify }: { notify: (msg: string) => void }) {
 function ApiKeys({ notify }: { notify: (msg: string) => void }) {
   const [keys, setKeys] = useState([
     {
-      id: "key_001",
-      value: "sk_live_14f81b239ab2cc9ca87c2339123c5",
+      id: "",
+      value: "",
       created: "2025-01-10",
     },
   ]);

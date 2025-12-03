@@ -1,46 +1,38 @@
 package db
 
 import (
-	"context"
-	"database/sql"
-	"fmt"
-	"os"
-	"time"
+    "database/sql"
+    "fmt"
+    "os"
+    "time"
 
-	_ "github.com/lib/pq"
+    _ "github.com/lib/pq"
 )
 
 var DB *sql.DB
 
 func Init() error {
-	if DB != nil {
-		fmt.Println("⚠️ DB already initialized — skipping re-init")
-		return nil
-	}
+    conn := os.Getenv("DATABASE_URL")
+    if conn == "" {
+        return fmt.Errorf("DATABASE_URL is not set")
+    }
 
-	url := os.Getenv("DATABASE_URL")
-	if url == "" {
-		url = "postgres://postgres.yaadnfxwvdhnxwqheybz:3PMxdwXEUtMxOamr@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
-	}
+    var err error
+    DB, err = sql.Open("postgres", conn)
+    if err != nil {
+        return fmt.Errorf("cannot open DB: %w", err)
+    }
 
-	var err error
-	DB, err = sql.Open("postgres", url)
-	if err != nil {
-		return err
-	}
+    // Настройки пула
+    DB.SetMaxOpenConns(20)
+    DB.SetMaxIdleConns(5)
+    DB.SetConnMaxLifetime(30 * time.Minute)
 
-	DB.SetMaxOpenConns(10)
-	DB.SetMaxIdleConns(5)
-	DB.SetConnMaxLifetime(time.Hour)
-	DB.SetConnMaxIdleTime(5 * time.Minute)
+    // Проверяем коннект
+    if err = DB.Ping(); err != nil {
+        return fmt.Errorf("cannot ping DB: %w", err)
+    }
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	if err = DB.PingContext(ctx); err != nil {
-		return fmt.Errorf("DB connection error: %w", err)
-	}
-
-	fmt.Println("✅ Connected to Postgres via database/sql + pgx")
-	return nil
+    fmt.Println("Connected to PostgreSQL")
+    return nil
 }

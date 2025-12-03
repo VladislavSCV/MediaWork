@@ -1,4 +1,4 @@
-module github/VladislavSCV/MediaWork
+module mediawork
 
 go 1.23.0
 
