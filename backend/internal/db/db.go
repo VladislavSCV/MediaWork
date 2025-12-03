@@ -3,7 +3,6 @@ package db
 import (
     "database/sql"
     "fmt"
-    "os"
     "time"
 
     _ "github.com/lib/pq"
@@ -12,7 +11,7 @@ import (
 var DB *sql.DB
 
 func Init() error {
-    conn := os.Getenv("DATABASE_URL")
+    conn := "postgres://postgres.yaadnfxwvdhnxwqheybz:3PMxdwXEUtMxOamr@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
     if conn == "" {
         return fmt.Errorf("DATABASE_URL is not set")
     }

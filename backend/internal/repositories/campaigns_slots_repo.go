@@ -199,3 +199,22 @@ func (r *CampaignSlotsRepository) GetActiveSlotsForFacade(
     return active, nil
 }
 
+func (r *CampaignSlotRepository) Create(ctx context.Context, slot *models.CampaignSlot) (int64, error) {
+    query := `
+        INSERT INTO campaign_slots (campaign_id, facade_id, start_time, end_time)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id
+    `
+    err := r.db.QueryRowContext(ctx, query,
+        slot.CampaignID,
+        slot.FacadeID,
+        slot.StartTime,
+        slot.EndTime,
+    ).Scan(&slot.ID)
+
+    if err != nil {
+        return 0, err
+    }
+
+    return slot.ID, nil
+}

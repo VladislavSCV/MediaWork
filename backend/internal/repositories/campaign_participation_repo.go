@@ -118,7 +118,16 @@ func (r *CampaignParticipationRepository) GetCampaignsForFacade(
 ) ([]models.Campaign, error) {
 
     query := `
-        SELECT c.id, c.name, c.company_id, c.media_url, c.status, c.start_date, c.end_date, c.created_at
+        SELECT 
+            c.id,
+            c.company_id,
+            c.name,
+            c.description,
+            c.start_time,
+            c.end_time,
+            c.status,
+            c.priority,
+            c.created_at
         FROM campaigns c
         JOIN campaign_participation cp ON cp.campaign_id = c.id
         WHERE cp.facade_id = $1
@@ -137,12 +146,13 @@ func (r *CampaignParticipationRepository) GetCampaignsForFacade(
         var c models.Campaign
         if err := rows.Scan(
             &c.ID,
-            &c.Name,
             &c.CompanyID,
-            &c.MediaURL,
+            &c.Name,
+            &c.Description,
+            &c.StartTime,
+            &c.EndTime,
             &c.Status,
-            &c.StartDate,
-            &c.EndDate,
+            &c.Priority,
             &c.CreatedAt,
         ); err != nil {
             return nil, err
@@ -152,6 +162,7 @@ func (r *CampaignParticipationRepository) GetCampaignsForFacade(
 
     return result, nil
 }
+
 
 //
 // ----------------------- CHECK IF ATTACHED -----------------------

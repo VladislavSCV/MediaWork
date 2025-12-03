@@ -125,3 +125,19 @@ func (r *CompanyRepository) Delete(ctx context.Context, id int64) error {
     _, err := r.db.ExecContext(ctx, `DELETE FROM companies WHERE id = $1`, id)
     return err
 }
+
+
+//
+// ----------------------- SET ACTIVE / DEACTIVATE -----------------------
+//
+
+func (r *CompanyRepository) SetActive(ctx context.Context, id int64, active bool) error {
+    query := `
+        UPDATE companies
+        SET is_active = $1,
+            updated_at = NOW()
+        WHERE id = $2
+    `
+    _, err := r.db.ExecContext(ctx, query, active, id)
+    return err
+}

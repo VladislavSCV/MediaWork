@@ -20,7 +20,7 @@ func NewLiveStreamRepository(db *sql.DB) *LiveStreamRepository {
 func (r *LiveStreamRepository) RegisterPlayEvent(
     ctx context.Context,
     event *models.PlayEvent,
-) (int64, error) {
+) error {
 
     query := `
         INSERT INTO play_history (
@@ -52,7 +52,7 @@ func (r *LiveStreamRepository) RegisterPlayEvent(
         event.SyncLatencyMS,
     ).Scan(&id)
 
-    return id, err
+    return err
 }
 
 //
@@ -96,7 +96,6 @@ func (r *LiveStreamRepository) GetLastPlayed(
 //
 // ----------------------- REGISTER HEARTBEAT -----------------------
 //
-
 func (r *LiveStreamRepository) RegisterHeartbeat(
     ctx context.Context,
     hb *models.Heartbeat,
@@ -114,7 +113,6 @@ func (r *LiveStreamRepository) RegisterHeartbeat(
 //
 // ----------------------- GET FACADE STATUS -----------------------
 //
-
 func (r *LiveStreamRepository) GetFacadeStatus(
     ctx context.Context,
     facadeID int64,
@@ -145,7 +143,6 @@ func (r *LiveStreamRepository) GetFacadeStatus(
 //
 // ----------------------- GET RECENT EVENTS -----------------------
 //
-
 func (r *LiveStreamRepository) GetRecentEvents(
     ctx context.Context,
     facadeID int64,
@@ -195,12 +192,9 @@ func (r *LiveStreamRepository) GetRecentEvents(
 //
 // ----------------------- CLEAN OLD HISTORY -----------------------
 //
-
 func (r *LiveStreamRepository) CleanupOldEvents(ctx context.Context) error {
-
     _, err := r.db.ExecContext(ctx,
         `DELETE FROM play_history WHERE played_at < NOW() - INTERVAL '90 days'`,
     )
     return err
 }
-

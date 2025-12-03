@@ -200,3 +200,46 @@ func (r *InvoiceRepository) Delete(ctx context.Context, id int64) error {
     _, err := r.db.ExecContext(ctx, `DELETE FROM invoices WHERE id = $1`, id)
     return err
 }
+
+//
+// ---------- SUM FOR PERIOD (start, end) ----------
+//
+func (r *InvoiceRepository) CalculateAmountForPeriod(
+    ctx context.Context,
+    companyID int64,
+    startPeriod string,
+    endPeriod string,
+) (float64, error) {
+
+    query := `
+        SELECT COALESCE(SUM(amount), 0)
+        FROM invoices
+        WHERE company_id = $1
+          AND period BETWEEN $2 AND $3
+    `
+    var sum float64
+    err := r.db.QueryRowContext(ctx, query, companyID, startPeriod, endPeriod).Scan(&sum)
+    return sum, err
+}
+
+//
+// ---------- PDF DATA ----------
+//
+func (r *InvoiceRepository) PreparePDFData(ctx context.Context, invoiceID int64) (*models.InvoicePDF, error) {
+    query := `
+        SELECT id, company_id, amount, period, status, created_at, paid_at
+        FROM invoices
+        WHERE id = $1
+    `
+    var inv models.Invoice
+    err := r.db.QueryRowContext(ctx, query, invoiceID).
+        Scan(&inv.ID, &inv.CompanyID, &inv.Amount, &inv.Period, &inv.Status, &inv.CreatedAt, &inv.PaidAt)
+    if err != nil {
+        return nil, err
+    }
+
+    return &models.InvoicePDF{
+        Invoice:     inv,
+        PlayHistory: []models.PlayHistory{}, // пока mock
+    }, nil
+}
