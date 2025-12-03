@@ -1,34 +1,331 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import {
+  UserCircleIcon,
+  KeyIcon,
+  ShieldCheckIcon,
+  BuildingOffice2Icon,
+  ClipboardIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
+import PageGuard from "@/components/RoleGuard";
+
+/* -------------------------------------------------------------
+   NOTIFICATION COMPONENT
+------------------------------------------------------------- */
+function Notification({ msg }: { msg: string }) {
+  return (
+    <div className="fixed top-6 right-6 z-50 rounded-xl bg-black/80 text-white px-4 py-2 text-sm shadow-[0_10px_40px_rgba(0,0,0,0.4)]">
+      {msg}
+    </div>
+  );
+}
 
 export default function ProfilePage() {
-  const [data, setData] = useState<any>(null);
+  const [tab, setTab] = useState<
+    "personal" | "security" | "api" | "company"
+  >("personal");
 
-  useEffect(() => {
-    fetch(`http://localhost:8080/api/portal/me`, {
-      headers: { Authorization: localStorage.getItem("advertiser_token") || "" },
-    })
-      .then((r) => r.json())
-      .then(setData);
-  }, []);
+  const tabs = [
+    { id: "personal", label: "Personal Info", icon: UserCircleIcon },
+    { id: "security", label: "Security", icon: ShieldCheckIcon },
+    { id: "api", label: "API Keys", icon: KeyIcon },
+    { id: "company", label: "Company Access", icon: BuildingOffice2Icon },
+  ];
 
-  if (!data) return <div className="opacity-60">Loading...</div>;
+  const [notification, setNotification] = useState("");
+
+  const notify = (msg: string) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(""), 2500);
+  };
 
   return (
-    <div>
-      <h1 className="text-3xl font-semibold mb-6">Profile</h1>
+    <PageGuard allow="viewer">
+    <div className="space-y-10 lg:space-y-12">
+      {notification && <Notification msg={notification} />}
 
-      <div className="bg-[#11161d] p-6 rounded-xl border border-white/10 w-[360px]">
-        <div className="mb-2 text-sm opacity-60">Company</div>
-        <div className="mb-6 text-lg">{data.name}</div>
+      {/* HEADER */}
+      <section className="rounded-[32px] border border-white/60 bg-white/80 px-6 py-6 shadow-[0_26px_90px_rgba(15,23,42,0.22)] backdrop-blur-xl">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+            Account
+          </div>
+          <h1 className="text-[26px] font-semibold tracking-[-0.03em] text-slate-900">
+            Profile Settings
+          </h1>
+          <p className="mt-1 text-[13px] text-slate-500">
+            Manage your personal info, security, API keys and company roles.
+          </p>
+        </div>
+      </section>
 
-        <div className="mb-2 text-sm opacity-60">Contact Person</div>
-        <div className="mb-6">{data.contact_person}</div>
+      {/* MAIN PANEL */}
+      <section className="rounded-[36px] border border-white/70 bg-white/80 shadow-[0_32px_120px_rgba(15,23,42,0.22)] backdrop-blur-xl p-0 overflow-hidden">
+        <div className="grid lg:grid-cols-[240px_1fr]">
 
-        <div className="mb-2 text-sm opacity-60">Email</div>
-        <div>{data.email}</div>
+          {/* LEFT NAV */}
+          <div className="border-r border-slate-200/60 bg-white/40 backdrop-blur-xl p-6 space-y-2">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id as any)}
+                className={`
+                  w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition
+                  text-left text-[14px]
+                  ${
+                    tab === t.id
+                      ? "bg-slate-900 text-white shadow-[0_6px_40px_rgba(15,23,42,0.25)]"
+                      : "text-slate-700 hover:bg-slate-100/70"
+                  }
+                `}
+              >
+                <t.icon className="h-5 w-5 opacity-80" />
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* RIGHT CONTENT */}
+          <div className="p-8">
+            {tab === "personal" && <PersonalInfo notify={notify} />}
+            {tab === "security" && <SecuritySettings notify={notify} />}
+            {tab === "api" && <ApiKeys notify={notify} />}
+            {tab === "company" && <CompanyAccess />}
+          </div>
+        </div>
+      </section>
+    </div>
+    </PageGuard>
+  );
+}
+
+/* -------------------------------------------------------------------
+   PERSONAL INFO
+------------------------------------------------------------------- */
+function PersonalInfo({ notify }: { notify: (msg: string) => void }) {
+  const [name, setName] = useState("Vladislav Scvorcov");
+  const [email, setEmail] = useState("vs@shiftam.com");
+  const [phone, setPhone] = useState("+7 (968) 839-38-00");
+
+  const handleSave = () => {
+    notify("Profile updated");
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Top card */}
+      <div className="flex items-center gap-6 rounded-[28px] border border-slate-200 bg-white/80 p-6 shadow-[0_22px_70px_rgba(15,23,42,0.15)]">
+        <div className="h-20 w-20 rounded-full bg-slate-300 shadow-inner" />
+        <div>
+          <h2 className="text-[20px] font-semibold text-slate-900">
+            {name}
+          </h2>
+          <p className="text-[14px] text-slate-600">{email}</p>
+          <p className="text-[12px] text-slate-400 mt-1">
+            Role: <span className="font-semibold text-slate-600">Admin</span>
+          </p>
+        </div>
       </div>
+
+      {/* Form */}
+      <div className="rounded-[28px] border border-slate-200 bg-white/70 p-6 shadow-[0_18px_70px_rgba(15,23,42,0.12)] space-y-6">
+        <Field label="Full name" value={name} onChange={setName} />
+        <Field label="Email" value={email} onChange={setEmail} />
+        <Field label="Phone" value={phone} onChange={setPhone} />
+
+        <button
+          onClick={handleSave}
+          className="rounded-xl bg-slate-900 text-white px-4 py-2 text-[14px] font-semibold hover:bg-slate-800 transition"
+        >
+          Save changes
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------
+   SECURITY SETTINGS
+------------------------------------------------------------------- */
+function SecuritySettings({ notify }: { notify: (msg: string) => void }) {
+  const [oldPwd, setOldPwd] = useState("");
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+
+  const handlePasswordChange = () => {
+    if (newPwd !== confirmPwd) {
+      notify("Passwords do not match");
+      return;
+    }
+    notify("Password changed");
+    setOldPwd("");
+    setNewPwd("");
+    setConfirmPwd("");
+  };
+
+  return (
+    <div className="space-y-8">
+      <h2 className="text-[20px] font-semibold text-slate-900">
+        Security
+      </h2>
+
+      <div className="rounded-[28px] border border-slate-200 bg-white/70 p-6 shadow-[0_18px_70px_rgba(15,23,42,0.15)] space-y-6">
+        <Field label="Old password" value={oldPwd} onChange={setOldPwd} password />
+        <Field label="New password" value={newPwd} onChange={setNewPwd} password />
+        <Field
+          label="Confirm new password"
+          value={confirmPwd}
+          onChange={setConfirmPwd}
+          password
+        />
+
+        <button
+          onClick={handlePasswordChange}
+          className="rounded-xl bg-slate-900 text-white px-4 py-2 text-[14px] font-semibold hover:bg-slate-800 transition"
+        >
+          Change password
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------
+   API KEYS
+------------------------------------------------------------------- */
+function ApiKeys({ notify }: { notify: (msg: string) => void }) {
+  const [keys, setKeys] = useState([
+    {
+      id: "key_001",
+      value: "sk_live_14f81b239ab2cc9ca87c2339123c5",
+      created: "2025-01-10",
+    },
+  ]);
+
+  const generateKey = () => {
+    const newKey = {
+      id: `key_${Math.random().toString(36).slice(2, 7)}`,
+      value: "sk_live_" + Math.random().toString(36).slice(2, 20),
+      created: new Date().toISOString().split("T")[0],
+    };
+
+    setKeys((prev) => [...prev, newKey]);
+    notify("New API key generated");
+  };
+
+  const copyKey = (value: string) => {
+    navigator.clipboard.writeText(value);
+    notify("Key copied");
+  };
+
+  const deleteKey = (id: string) => {
+    setKeys((prev) => prev.filter((k) => k.id !== id));
+    notify("Key deleted");
+  };
+
+  return (
+    <div className="space-y-8">
+      <h2 className="text-[20px] font-semibold text-slate-900">API Keys</h2>
+
+      <div className="rounded-[28px] border border-slate-200 bg-white/70 p-6 space-y-4 shadow-[0_18px_70px_rgba(15,23,42,0.15)]">
+        {keys.map((k) => (
+          <div
+            key={k.id}
+            className="rounded-xl border border-slate-300 bg-white/80 p-4 shadow-sm flex justify-between items-center"
+          >
+            <div className="flex flex-col">
+              <span className="font-mono text-[13px] text-slate-700">
+                {k.value.replace(/(?<=.{10}).*/, "****************")}
+              </span>
+              <span className="text-[11px] text-slate-400">
+                Created: {k.created}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button onClick={() => copyKey(k.value)}>
+                <ClipboardIcon className="h-5 w-5 text-slate-600 hover:text-slate-900" />
+              </button>
+
+              <button onClick={() => deleteKey(k.id)}>
+                <TrashIcon className="h-5 w-5 text-red-400 hover:text-red-600" />
+              </button>
+            </div>
+          </div>
+        ))}
+
+        <button
+          onClick={generateKey}
+          className="rounded-xl bg-slate-900 text-white px-4 py-2 text-[14px] font-semibold hover:bg-slate-800 transition"
+        >
+          Generate new key
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------
+   COMPANY ACCESS
+------------------------------------------------------------------- */
+function CompanyAccess() {
+  const roles = [
+    { company: "MediaWork", role: "Owner" },
+    { company: "Shiftam", role: "Admin" },
+    { company: "AdSpace LTD", role: "Viewer" },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <h2 className="text-[20px] font-semibold text-slate-900">
+        Company Access
+      </h2>
+
+      <div className="rounded-[28px] border border-slate-200 bg-white/70 p-6 shadow-[0_18px_70px_rgba(15,23,42,0.15)] space-y-4">
+        {roles.map((r, i) => (
+          <div
+            key={i}
+            className="rounded-xl border border-slate-300 bg-white/80 p-4 shadow-sm flex justify-between"
+          >
+            <span className="text-[14px] text-slate-700">{r.company}</span>
+            <span className="text-[13px] font-medium text-slate-500">
+              {r.role}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------
+   FIELD COMPONENT
+------------------------------------------------------------------- */
+function Field({
+  label,
+  value,
+  onChange,
+  password,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  password?: boolean;
+}) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400 mb-1">
+        {label}
+      </div>
+
+      <input
+        type={password ? "password" : "text"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-xl border border-slate-300 bg-white/50 px-4 py-2 text-[14px] shadow-sm focus:outline-none"
+      />
     </div>
   );
 }

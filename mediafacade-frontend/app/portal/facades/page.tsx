@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import PageGuard from "@/components/RoleGuard";
 
 type Facade = {
   id: number;
@@ -70,6 +71,7 @@ export default function FacadesPage() {
   });
 
   return (
+    <PageGuard allow="viewer">
     <div className="space-y-10 lg:space-y-12">
       {/* HEADER */}
       <section className="rounded-[32px] border border-white/70 bg-white/80 px-6 py-6 shadow-[0_26px_90px_rgba(15,23,42,0.22)] backdrop-blur-2xl relative">
@@ -132,6 +134,7 @@ export default function FacadesPage() {
         )}
       </section>
     </div>
+    </PageGuard>
   );
 }
 

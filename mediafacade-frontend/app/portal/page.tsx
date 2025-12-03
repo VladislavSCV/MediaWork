@@ -1,5 +1,6 @@
 "use client";
 
+import PageGuard from "@/components/RoleGuard";
 import { useState } from "react";
 // Подстрой путь импорта под свой проект
 // import FacadeWall from "./FacadeWall";
@@ -56,6 +57,7 @@ export default function MediaFacadeLayout() {
   const [active, setActive] = useState<ScreenId>("dashboard");
 
   return (
+    <PageGuard allow="viewer">
     <div className="min-h-screen w-full overflow-hidden bg-gradient-to-br from-white via-[#f5f7fa] to-[#e5edf5] text-slate-900">
       {/* Атмосферный фон: сетка + блюры */}
       <div className="pointer-events-none fixed inset-0 -z-10">
@@ -234,6 +236,7 @@ export default function MediaFacadeLayout() {
         </main>
       </div>
     </div>
+    </PageGuard>
   );
 }
 
