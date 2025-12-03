@@ -12,7 +12,7 @@ start_front:
 start:
 	make -j 2 start_back start_front
 
-git_end_work:
+end:
 	git add .
 	git commit -m "end_work commit"
 	git push

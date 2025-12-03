@@ -1,23 +1,28 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* НИКАКИХ * { border:0 }  */
-/* НИКАКИХ background:transparent */
-/* НИКАКИХ reset-ов кроме box-sizing */
+/* говорим Tailwind, какие файлы сканировать */
+@source "./**/*.{js,ts,jsx,tsx}";
 
-*, *::before, *::after {
-  box-sizing: border-box;
-}
+/* базовые правки — в base-слое */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
 
-html, body {
-  padding: 0;
-  margin: 0;
-  background: transparent;
-}
+  html, body {
+    padding: 0;
+    margin: 0;
+    min-height: 100%;
+    background: radial-gradient(circle at top, #ffffff, #f5f7fa 55%, #e5edf5 100%);
+  }
 
-img, video {
-  max-width: 100%;
-  height: auto;
-  display: block;
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif;
+  }
+
+  img, video {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
 }
