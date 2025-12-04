@@ -1,10 +1,67 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PageGuard from "@/components/RoleGuard";
+import { apiFetch } from "@/lib/apiClient";
 
 type ScreenId = "dashboard" | "campaigns" | "invoices" | "profile";
+
+/* ───────────────────── Типы из бэка ───────────────────── */
+
+type UserProfile = {
+  id: number;
+  email: string;
+  full_name: string;
+  name?: string;
+  role: string;
+  created_at: string;
+};
+
+type Facade = {
+  id: number;
+  code: string;
+  name: string;
+  address: string;
+  latitude?: number;
+  longitude?: number;
+  width_px: number;
+  height_px: number;
+  rows: number;
+  cols: number;
+  status: string; // "online" | "offline" | "degraded" и т.п.
+  last_seen?: string | null;
+};
+
+type Campaign = {
+  id: number;
+  company_id: number;
+  name: string;
+  description?: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  status: string; // "draft" | "scheduled" | "live" | ...
+  priority: number;
+  created_at: string;
+};
+
+type Invoice = {
+  id: number;
+  company_id: number;
+  invoice_number: string;
+  period_start: string;
+  period_end: string;
+  amount_total: number;
+  currency: string;
+  status: string; // "pending" | "paid" | "failed"
+  due_date?: string | null;
+  issued_at: string;
+  paid_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/* ───────────────────── Навигация ───────────────────── */
 
 const NAV_ITEMS: { id: ScreenId; label: string; icon: JSX.Element }[] = [
   {
@@ -52,15 +109,65 @@ const NAV_ITEMS: { id: ScreenId; label: string; icon: JSX.Element }[] = [
   },
 ];
 
+/* ───────────────────── Основной компонент ───────────────────── */
+
 export default function PortalHomePage() {
   const [active, setActive] = useState<ScreenId>("dashboard");
+
+  const [me, setMe] = useState<UserProfile | null>(null);
+  const [facades, setFacades] = useState<Facade[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const [meRes, facadesRes, campaignsRes, invoicesRes] =
+          await Promise.all([
+            apiFetch("/me"),
+            apiFetch("/facades"),
+            apiFetch("/campaigns"),
+            apiFetch("/invoices"),
+          ]);
+
+        if (cancelled) return;
+
+        setMe(meRes || null);
+        setFacades(facadesRes || []);
+        setCampaigns(campaignsRes || []);
+        setInvoices(invoicesRes || []);
+      } catch (err) {
+        console.error("Failed to load portal data:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const displayName =
+    me?.full_name || me?.name || "User";
+  const roleLabel = me ? humanRole(me.role) : "—";
+
+  const facadesCount = facades.length;
+  const onlineFacades = facades.filter((f) => f.status === "online").length;
+  const syncHealthPct =
+    facadesCount > 0
+      ? Math.round((onlineFacades / facadesCount) * 1000) / 10
+      : 0;
 
   return (
     <PageGuard allow="viewer">
       <div className="min-h-screen w-full overflow-hidden bg-gradient-to-br from-white via-[#f5f7fa] to-[#e5edf5] text-slate-900">
-        {/* Атмосферный фон: сетка + блюры */}
+        {/* Атмосферный фон */}
         <div className="pointer-events-none fixed inset-0 -z-10">
-          {/* Мягкая сетка */}
           <div
             className="absolute inset-0 opacity-[0.07]"
             style={{
@@ -69,7 +176,6 @@ export default function PortalHomePage() {
               backgroundSize: "44px 44px",
             }}
           />
-          {/* Размытые пятна */}
           <div className="absolute -top-32 -left-16 h-72 w-72 rounded-full bg-blue-100/70 blur-3xl" />
           <div className="absolute top-24 -right-10 h-80 w-80 rounded-full bg-slate-200/80 blur-3xl" />
           <div className="absolute bottom-[-120px] left-1/3 h-80 w-80 rounded-full bg-sky-100/80 blur-3xl" />
@@ -134,14 +240,16 @@ export default function PortalHomePage() {
                     Facade Cluster
                   </span>
                   <span className="text-xs text-slate-500">
-                    12 facades · 4 cities
+                    {facadesCount} facades connected
                   </span>
                 </div>
                 <div className="flex items-center justify-between rounded-2xl bg-white/70 px-3 py-2.5 text-xs shadow-[0_10px_35px_rgba(15,23,42,0.12)]">
                   <span className="text-slate-500">Live sync</span>
                   <span className="inline-flex items-center gap-1 font-mono text-[11px] text-emerald-600">
                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    OK
+                    {facadesCount > 0
+                      ? `${syncHealthPct.toFixed(1)}%`
+                      : "no data"}
                   </span>
                 </div>
               </div>
@@ -150,7 +258,7 @@ export default function PortalHomePage() {
 
           {/* Правая часть: topbar + main sheet */}
           <main className="flex flex-1 flex-col gap-4 lg:gap-6">
-            {/* Topbar — стекло */}
+            {/* Topbar */}
             <header className="flex items-center justify-between rounded-[26px] border border-white/70 bg-white/70 px-5 py-3 shadow-[0_18px_60px_rgba(15,23,42,0.16)] backdrop-blur-2xl">
               <div className="flex items-center gap-4">
                 <div className="flex flex-col">
@@ -166,7 +274,9 @@ export default function PortalHomePage() {
               <div className="flex items-center gap-5">
                 <div className="hidden md:flex items-center gap-3 rounded-2xl border border-white/70 bg-white/60 px-3 py-1.5 text-[11px] font-mono text-slate-500 shadow-[0_14px_40px_rgba(15,23,42,0.12)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  <span>Cluster: EU-1 · 16:9 · 60fps</span>
+                  <span>
+                    Cluster: EU-1 · {facadesCount || 0} facades
+                  </span>
                 </div>
 
                 <Link
@@ -174,14 +284,14 @@ export default function PortalHomePage() {
                   className="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/70 px-2.5 py-1.5 text-xs shadow-[0_10px_32px_rgba(15,23,42,0.15)]"
                 >
                   <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-slate-900 text-xs font-semibold text-white">
-                    VS
+                    {initials(displayName)}
                   </div>
                   <div className="hidden flex-col text-left sm:flex">
                     <span className="text-[11px] font-semibold text-slate-900">
-                      Vladislav
+                      {displayName}
                     </span>
                     <span className="text-[11px] text-slate-500">
-                      Admin · Studio
+                      {roleLabel}
                     </span>
                   </div>
                 </Link>
@@ -190,11 +300,10 @@ export default function PortalHomePage() {
 
             {/* Main sheet */}
             <section className="relative flex-1 rounded-[36px] border border-white/70 bg-white/80 shadow-[0_30px_110px_rgba(15,23,42,0.22)] backdrop-blur-2xl">
-              {/* Внутренний мягкий градиент */}
               <div className="pointer-events-none absolute inset-0 rounded-[36px] bg-gradient-to-br from-white/80 via-white/60 to-slate-50/60" />
 
               <div className="relative flex h-full flex-col gap-6 px-6 pb-6 pt-5 lg:px-8 lg:pb-8 lg:pt-6">
-                {/* Верхняя строка контента: контекст + быстрые экшены */}
+                {/* Верхняя строка контента */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -221,24 +330,52 @@ export default function PortalHomePage() {
                   </div>
                 </div>
 
-                {/* Основной контент по активной вкладке (мини-превью) */}
-                <div className="grid h-full gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-                  {/* Левая часть */}
-                  <div className="flex flex-col gap-4 lg:gap-5">
-                    {active === "dashboard" && <DashboardScreen />}
-                    {active === "campaigns" && <CampaignsScreen />}
-                    {active === "invoices" && <InvoicesScreen />}
-                    {active === "profile" && <ProfileScreen />}
+                {/* Контент */}
+                {loading ? (
+                  <div className="flex flex-1 items-center justify-center text-sm text-slate-400">
+                    Loading workspace…
                   </div>
+                ) : (
+                  <div className="grid h-full gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+                    {/* Левая часть */}
+                    <div className="flex flex-col gap-4 lg:gap-5">
+                      {active === "dashboard" && (
+                        <DashboardScreen
+                          facades={facades}
+                          campaigns={campaigns}
+                        />
+                      )}
+                      {active === "campaigns" && (
+                        <CampaignsScreen campaigns={campaigns} />
+                      )}
+                      {active === "invoices" && (
+                        <InvoicesScreen invoices={invoices} />
+                      )}
+                      {active === "profile" && (
+                        <ProfileScreen me={me} />
+                      )}
+                    </div>
 
-                  {/* Правая часть */}
-                  <div className="flex flex-col gap-4 lg:gap-5">
-                    {active === "dashboard" && <DashboardSecondary />}
-                    {active === "campaigns" && <CampaignsSecondary />}
-                    {active === "invoices" && <InvoicesSecondary />}
-                    {active === "profile" && <ProfileSecondary />}
+                    {/* Правая часть */}
+                    <div className="flex flex-col gap-4 lg:gap-5">
+                      {active === "dashboard" && (
+                        <DashboardSecondary
+                          campaigns={campaigns}
+                          facades={facades}
+                        />
+                      )}
+                      {active === "campaigns" && (
+                        <CampaignsSecondary campaigns={campaigns} />
+                      )}
+                      {active === "invoices" && (
+                        <InvoicesSecondary invoices={invoices} />
+                      )}
+                      {active === "profile" && (
+                        <ProfileSecondary me={me} />
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </section>
           </main>
@@ -292,7 +429,7 @@ function subtitleFor(id: ScreenId) {
 function descriptionFor(id: ScreenId) {
   switch (id) {
     case "dashboard":
-      return "Quiet, real-time overview of all facades and campaigns in one place.";
+      return "Real-time overview of all facades and campaigns in one place.";
     case "campaigns":
       return "Design, schedule and sync media-facade campaigns with minute-level precision.";
     case "invoices":
@@ -330,7 +467,18 @@ function primaryRouteFor(id: ScreenId): string {
 
 /* ───────────────────── Экран: DASHBOARD ───────────────────── */
 
-function DashboardScreen() {
+function DashboardScreen({
+  facades,
+  campaigns,
+}: {
+  facades: Facade[];
+  campaigns: Campaign[];
+}) {
+  const primary = facades[0];
+  const activeCampaigns = campaigns.filter(
+    (c) => c.status === "live" || c.status === "scheduled",
+  ).length;
+
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
       <Link
@@ -343,12 +491,16 @@ function DashboardScreen() {
               Primary facade
             </span>
             <span className="text-sm font-medium text-slate-900">
-              Moscow · Tverskaya 21 · 16:9
+              {primary
+                ? `${primary.name} · ${primary.address || "No address"}`
+                : "No facades connected yet"}
             </span>
           </div>
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-mono text-emerald-600">
-            ONLINE · 14.2 ms
-          </span>
+          {primary && (
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-mono text-emerald-600">
+              {primary.status.toUpperCase()}
+            </span>
+          )}
         </div>
 
         <div className="relative mt-2 aspect-[16/9] overflow-hidden rounded-[24px] border border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -364,25 +516,62 @@ function DashboardScreen() {
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/12 via-transparent to-white/40" />
           <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-2xl bg-white/80 px-3 py-1.5 text-[11px] font-mono text-slate-700 shadow-[0_12px_40px_rgba(15,23,42,0.4)]">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            STREAM · 00:14:32
+            {primary ? "LIVE PREVIEW" : "NO SIGNAL"}
           </div>
         </div>
       </Link>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <MetricCard label="Active facades" value="12" hint="+2 this week" />
-        <MetricCard label="Live campaigns" value="27" hint="4 finishing today" />
         <MetricCard
-          label="Sync health"
-          value="99.4%"
-          hint="Across all clusters"
+          label="Active facades"
+          value={String(facades.length)}
+          hint={`${facades.filter((f) => f.status === "online").length} online`}
+        />
+        <MetricCard
+          label="Live / scheduled campaigns"
+          value={String(activeCampaigns)}
+          hint={`${campaigns.length} total campaigns`}
+        />
+        <MetricCard
+          label="Recently added"
+          value={
+            campaigns.slice(0, 1)[0]?.name
+              ? campaigns[0].name
+              : "No campaigns yet"
+          }
+          hint={
+            campaigns[0]?.created_at
+              ? `Created at ${campaigns[0].created_at.slice(0, 10)}`
+              : "—"
+          }
         />
       </div>
     </div>
   );
 }
 
-function DashboardSecondary() {
+function DashboardSecondary({
+  campaigns,
+  facades,
+}: {
+  campaigns: Campaign[];
+  facades: Facade[];
+}) {
+  const now = new Date();
+  const upcoming = campaigns
+    .filter(
+      (c) =>
+        c.start_time &&
+        new Date(c.start_time) > now &&
+        (c.status === "scheduled" || c.status === "live"),
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.start_time || "").getTime() -
+        new Date(b.start_time || "").getTime(),
+    )
+    .slice(0, 3);
+
   return (
     <div className="flex h-full flex-col gap-4 lg:gap-5">
       <div className="rounded-[24px] border border-slate-200/70 bg-white/90 p-4 shadow-[0_18px_70px_rgba(15,23,42,0.16)]">
@@ -398,35 +587,28 @@ function DashboardSecondary() {
           </Link>
         </div>
         <div className="space-y-3 text-sm">
-          {[
-            {
-              time: "Today · 18:00",
-              title: "Evening brand loop",
-              place: "Berlin · Alexanderplatz",
-            },
-            {
-              time: "Today · 21:30",
-              title: "Night skyline animation",
-              place: "Moscow · City Towers",
-            },
-            {
-              time: "Tomorrow · 07:00",
-              title: "Morning calm preset",
-              place: "London · Piccadilly",
-            },
-          ].map((item) => (
+          {upcoming.length === 0 && (
+            <div className="rounded-2xl bg-slate-50/70 px-3 py-2.5 text-[11px] text-slate-500">
+              No upcoming campaigns scheduled.
+            </div>
+          )}
+          {upcoming.map((c) => (
             <div
-              key={item.title}
+              key={c.id}
               className="flex items-start justify-between rounded-2xl bg-slate-50/70 px-3 py-2.5"
             >
               <div className="flex flex-col">
                 <span className="text-[11px] font-mono text-slate-500">
-                  {item.time}
+                  {c.start_time
+                    ? new Date(c.start_time).toLocaleString()
+                    : "—"}
                 </span>
                 <span className="text-sm font-medium text-slate-900">
-                  {item.title}
+                  {c.name}
                 </span>
-                <span className="text-[11px] text-slate-500">{item.place}</span>
+                <span className="text-[11px] text-slate-500">
+                  Status: {c.status}
+                </span>
               </div>
               <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
             </div>
@@ -436,29 +618,33 @@ function DashboardSecondary() {
 
       <div className="rounded-[24px] border border-slate-200/70 bg-white/90 p-4 shadow-[0_18px_70px_rgba(15,23,42,0.16)]">
         <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-          Cluster load
+          Facade statuses
         </span>
         <div className="mt-3 space-y-3 text-sm">
-          {[
-            { cluster: "EU-1", load: "64%" },
-            { cluster: "EU-2", load: "41%" },
-            { cluster: "APAC-1", load: "78%" },
-          ].map((c) => (
-            <div key={c.cluster} className="flex items-center gap-3">
-              <div className="w-16 text-[11px] font-mono text-slate-500">
-                {c.cluster}
+          {facades.slice(0, 4).map((f) => (
+            <Link
+              key={f.id}
+              href="/portal/dashboard"
+              className="flex items-center justify-between rounded-2xl bg-slate-50/80 px-3 py-2.5 transition hover:-translate-y-[1px] hover:bg-slate-50 hover:shadow-[0_16px_55px_rgba(15,23,42,0.2)]"
+            >
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-slate-900">
+                  {f.name}
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  {f.address || "No address"}
+                </span>
               </div>
-              <div className="h-1.5 flex-1 rounded-full bg-slate-100">
-                <div
-                  className="h-1.5 rounded-full bg-slate-900"
-                  style={{ width: c.load }}
-                />
-              </div>
-              <div className="w-10 text-right text-[11px] font-mono text-slate-600">
-                {c.load}
-              </div>
-            </div>
+              <span className="text-[11px] font-mono text-slate-600">
+                {f.status.toUpperCase()}
+              </span>
+            </Link>
           ))}
+          {facades.length === 0 && (
+            <div className="rounded-2xl bg-slate-50/80 px-3 py-2.5 text-[11px] text-slate-500">
+              No facades yet.
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -467,28 +653,7 @@ function DashboardSecondary() {
 
 /* ───────────────────── Экран: CAMPAIGNS ───────────────────── */
 
-function CampaignsScreen() {
-  const campaigns = [
-    {
-      name: "Morning calm preset",
-      status: "Scheduled",
-      period: "Mon–Fri · 06:00–09:00",
-      facades: "7 facades",
-    },
-    {
-      name: "City lights brand loop",
-      status: "Live",
-      period: "Daily · 18:00–23:30",
-      facades: "9 facades",
-    },
-    {
-      name: "Weekend art takeover",
-      status: "Draft",
-      period: "Sat–Sun · 12:00–22:00",
-      facades: "4 facades",
-    },
-  ];
-
+function CampaignsScreen({ campaigns }: { campaigns: Campaign[] }) {
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
       <div className="rounded-[24px] border border-slate-200/70 bg-white/95 p-4 shadow-[0_22px_80px_rgba(15,23,42,0.18)]">
@@ -503,7 +668,9 @@ function CampaignsScreen() {
             View all
           </Link>
         </div>
-        <div className="h-32 rounded-2xl bg-gradient-to-r from-slate-50 via-slate-100 to-slate-50" />
+        <div className="h-32 rounded-2xl bg-gradient-to-r from-slate-50 via-slate-100 to-slate-50 flex items-center justify-center text-[11px] text-slate-400">
+          Timeline placeholder (attach chart later)
+        </div>
       </div>
 
       <div className="rounded-[24px] border border-slate-200/70 bg-white/95 p-4 shadow-[0_22px_80px_rgba(15,23,42,0.18)]">
@@ -519,10 +686,15 @@ function CampaignsScreen() {
           </Link>
         </div>
         <div className="space-y-2.5 text-sm">
-          {campaigns.map((c) => (
+          {campaigns.length === 0 && (
+            <div className="rounded-2xl bg-slate-50/70 px-3 py-2.5 text-[11px] text-slate-500">
+              No campaigns yet. Create your first one.
+            </div>
+          )}
+          {campaigns.slice(0, 5).map((c) => (
             <Link
-              key={c.name}
-              href="/portal/campaigns"
+              key={c.id}
+              href={`/portal/campaigns`}
               className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 transition hover:-translate-y-[1px] hover:bg-slate-50 hover:shadow-[0_16px_55px_rgba(15,23,42,0.2)]"
             >
               <div className="flex flex-col">
@@ -530,7 +702,11 @@ function CampaignsScreen() {
                   {c.name}
                 </span>
                 <span className="text-[11px] text-slate-500">
-                  {c.period} · {c.facades}
+                  {c.start_time
+                    ? `${c.start_time.slice(0, 10)} → ${
+                        c.end_time?.slice(0, 10) || "—"
+                      }`
+                    : "No schedule"}
                 </span>
               </div>
               <span className={badgeClassForStatus(c.status)}>
@@ -544,49 +720,64 @@ function CampaignsScreen() {
   );
 }
 
-function CampaignsSecondary() {
+function CampaignsSecondary({ campaigns }: { campaigns: Campaign[] }) {
+  const grouped = campaigns.reduce<Record<string, number>>((acc, c) => {
+    acc[c.status] = (acc[c.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const entries = Object.entries(grouped);
+
   return (
     <div className="flex h-full flex-col gap-4 lg:gap-5">
       <div className="rounded-[24px] border border-slate-200/70 bg-white/95 p-4 shadow-[0_22px_80px_rgba(15,23,42,0.18)]">
         <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-          Target facades
+          Campaign status breakdown
         </span>
         <div className="mt-3 space-y-2.5 text-sm">
-          {[
-            { name: "Moscow · City Towers", slots: "5 slots", fill: "92%" },
-            { name: "Berlin · Alexanderplatz", slots: "3 slots", fill: "76%" },
-            { name: "London · Piccadilly", slots: "4 slots", fill: "81%" },
-          ].map((f) => (
-            <Link
-              key={f.name}
-              href="/portal/facades"
-              className="flex flex-col rounded-2xl bg-slate-50/80 px-3 py-2.5 transition hover:-translate-y-[1px] hover:bg-slate-50 hover:shadow-[0_16px_55px_rgba(15,23,42,0.2)]"
+          {entries.length === 0 && (
+            <div className="rounded-2xl bg-slate-50/80 px-3 py-2.5 text-[11px] text-slate-500">
+              No campaigns to display.
+            </div>
+          )}
+          {entries.map(([status, count]) => (
+            <div
+              key={status}
+              className="flex items-center gap-3 rounded-2xl bg-slate-50/80 px-3 py-2.5"
             >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-900">
-                  {f.name}
-                </span>
-                <span className="text-[11px] text-slate-500">{f.slots}</span>
-              </div>
-              <div className="mt-2 h-1.5 rounded-full bg-slate-100">
+              <span className="w-24 text-[11px] font-mono text-slate-500">
+                {status.toUpperCase()}
+              </span>
+              <div className="h-1.5 flex-1 rounded-full bg-slate-100">
                 <div
                   className="h-1.5 rounded-full bg-slate-900"
-                  style={{ width: f.fill }}
+                  style={{
+                    width:
+                      campaigns.length > 0
+                        ? `${(count / campaigns.length) * 100}%`
+                        : "0%",
+                  }}
                 />
               </div>
-            </Link>
+              <span className="w-8 text-right text-[11px] font-mono text-slate-600">
+                {count}
+              </span>
+            </div>
           ))}
         </div>
       </div>
 
       <div className="rounded-[24px] border border-slate-200/70 bg-white/95 p-4 shadow-[0_22px_80px_rgba(15,23,42,0.18)]">
         <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-          Recent edits
+          Recent campaigns
         </span>
         <div className="mt-3 space-y-2 text-[11px] text-slate-600">
-          <p>09:14 — “Evening art loop” brightness adjusted · +8%</p>
-          <p>08:52 — “Night skyline” color temperature set to 6800K</p>
-          <p>Yesterday — “Brand takeover” logo safe-area updated</p>
+          {campaigns.slice(0, 3).map((c) => (
+            <p key={c.id}>
+              {c.created_at.slice(0, 10)} — {c.name} ({c.status})
+            </p>
+          ))}
+          {campaigns.length === 0 && <p>No campaigns yet.</p>}
         </div>
       </div>
     </div>
@@ -595,30 +786,17 @@ function CampaignsSecondary() {
 
 /* ───────────────────── Экран: INVOICES ───────────────────── */
 
-function InvoicesScreen() {
-  const invoices = [
-    {
-      id: "#MF-2043",
-      client: "Aurora Retail Group",
-      amount: "₽ 1 240 000",
-      period: "Oct 2025",
-      status: "Pending",
-    },
-    {
-      id: "#MF-2042",
-      client: "Skyline Media",
-      amount: "₽ 890 000",
-      period: "Oct 2025",
-      status: "Paid",
-    },
-    {
-      id: "#MF-2041",
-      client: "Nordic Brand Studio",
-      amount: "₽ 620 000",
-      period: "Sep 2025",
-      status: "Paid",
-    },
-  ];
+function InvoicesScreen({ invoices }: { invoices: Invoice[] }) {
+  const latest = invoices
+    .slice()
+    .sort(
+      (a, b) =>
+        new Date(b.issued_at).getTime() -
+        new Date(a.issued_at).getTime(),
+    )
+    .slice(0, 5);
+
+  const thisMonthTotal = calculateThisMonth(invoices);
 
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
@@ -635,36 +813,75 @@ function InvoicesScreen() {
           </Link>
         </div>
         <div className="space-y-2.5 text-sm">
-          {invoices.map((i) => (
+          {latest.length === 0 && (
+            <div className="rounded-2xl bg-slate-50/70 px-3 py-2.5 text-[11px] text-slate-500">
+              No invoices yet.
+            </div>
+          )}
+          {latest.map((i) => (
             <Link
               key={i.id}
               href="/portal/invoices"
-              className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,0.7fr)] items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-left transition hover:-translate-y-[1px] hover:bg-slate-50 hover:shadow-[0_16px_55px_rgba(15,23,42,0.2)]"
+              className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.5fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)] items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-left transition hover:-translate-y-[1px] hover:bg-slate-50 hover:shadow-[0_16px_55px_rgba(15,23,42,0.2)]"
             >
               <span className="font-mono text-[11px] text-slate-500">
-                {i.id}
+                {i.invoice_number}
               </span>
-              <span className="truncate text-sm font-medium text-slate-900">
-                {i.client}
+              <span className="truncate text-sm text-slate-900">
+                {i.period_start.slice(0, 10)} →{" "}
+                {i.period_end.slice(0, 10)}
               </span>
-              <span className="text-sm text-slate-900">{i.amount}</span>
-              <span className="text-[11px] text-slate-500">{i.period}</span>
-              <span className={badgeClassForStatus(i.status)}>{i.status}</span>
+              <span className="text-sm text-slate-900">
+                {i.amount_total.toLocaleString()} {i.currency}
+              </span>
+              <span className="text-[11px] text-slate-500">
+                {i.issued_at.slice(0, 10)}
+              </span>
+              <span className={badgeClassForStatus(i.status)}>
+                {i.status}
+              </span>
             </Link>
           ))}
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <MetricCard label="This month" value="₽ 3.4M" hint="Projected" />
-        <MetricCard label="Collected" value="₽ 2.7M" hint="79% paid" />
-        <MetricCard label="Overdue" value="₽ 0.18M" hint="2 clients" />
+        <MetricCard
+          label="This month"
+          value={
+            thisMonthTotal > 0
+              ? `${thisMonthTotal.toLocaleString()} ₽`
+              : "—"
+          }
+          hint="Total issued"
+        />
+        <MetricCard
+          label="Paid invoices"
+          value={String(
+            invoices.filter((i) => i.status === "paid").length,
+          )}
+          hint="All time"
+        />
+        <MetricCard
+          label="Pending"
+          value={String(
+            invoices.filter((i) => i.status === "pending").length,
+          )}
+          hint="Awaiting payment"
+        />
       </div>
     </div>
   );
 }
 
-function InvoicesSecondary() {
+function InvoicesSecondary({ invoices }: { invoices: Invoice[] }) {
+  const overdue = invoices.filter(
+    (i) =>
+      i.status === "pending" &&
+      i.due_date &&
+      new Date(i.due_date) < new Date(),
+  );
+
   return (
     <div className="flex h-full flex-col gap-4 lg:gap-5">
       <div className="rounded-[24px] border border-slate-200/70 bg-white/95 p-4 shadow-[0_22px_80px_rgba(15,23,42,0.18)]">
@@ -673,13 +890,20 @@ function InvoicesSecondary() {
         </span>
         <div className="mt-3 space-y-2 text-sm">
           <p className="text-[11px] text-slate-600">
-            Campaign playtime · spot count · CPM rates are already matched to
-            invoices.
+            Invoices are generated from actual campaign activity and
+            rate cards.
           </p>
           <div className="mt-3 space-y-2 text-[11px] text-slate-600">
-            <p>· 98.7% of spots matched automatically</p>
-            <p>· 3 unresolved playtime anomalies</p>
-            <p>· 1 manual adjustment awaiting approval</p>
+            <p>
+              · {invoices.length} total invoices in the system
+            </p>
+            <p>
+              · {invoices.filter((i) => i.status === "paid").length}{" "}
+              fully paid
+            </p>
+            <p>
+              · {overdue.length} overdue invoices by due date
+            </p>
           </div>
         </div>
       </div>
@@ -690,7 +914,8 @@ function InvoicesSecondary() {
         </span>
         <div className="mt-3 space-y-2 text-sm">
           <p className="text-[11px] text-slate-600">
-            Export clean billing data directly into your accounting stack.
+            Export billing data into external accounting tools (CSV,
+            XLSX, etc.). Integrations can be added later.
           </p>
           <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
             {["CSV", "XLSX", "XML", "API"].map((fmt) => (
@@ -710,7 +935,7 @@ function InvoicesSecondary() {
 
 /* ───────────────────── Экран: PROFILE ───────────────────── */
 
-function ProfileScreen() {
+function ProfileScreen({ me }: { me: UserProfile | null }) {
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
       <Link
@@ -719,23 +944,32 @@ function ProfileScreen() {
       >
         <div className="mb-4 flex items-center gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-slate-900 text-sm font-semibold text-white shadow-[0_16px_40px_rgba(15,23,42,0.6)]">
-            VS
+            {initials(me?.full_name || me?.name || "User")}
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-slate-900">
-              Vladislav
+              {me?.full_name || me?.name || "User"}
             </span>
             <span className="text-[11px] text-slate-500">
-              Owner · Media facade studio
+              {humanRole(me?.role || "user")}
             </span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 text-sm">
-          <DetailField label="Email" value="vs@shiftam.com" />
-          <DetailField label="Workspace" value="MediaWork / Facades" />
-          <DetailField label="Role" value="Administrator" />
-          <DetailField label="Time zone" value="Europe/Moscow" />
+          <DetailField label="Email" value={me?.email || "—"} />
+          <DetailField
+            label="Workspace"
+            value="MediaWork / Facades"
+          />
+          <DetailField
+            label="Role"
+            value={humanRole(me?.role || "user")}
+          />
+          <DetailField
+            label="Created at"
+            value={me?.created_at?.slice(0, 10) || "—"}
+          />
         </div>
       </Link>
 
@@ -744,17 +978,26 @@ function ProfileScreen() {
           Security
         </span>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 text-sm">
-          <DetailField label="2FA" value="Enabled · TOTP" />
-          <DetailField label="Last sign-in" value="Today · 09:14 · Moscow" />
-          <DetailField label="Devices" value="3 trusted devices" />
-          <DetailField label="API tokens" value="2 active tokens" />
+          <DetailField label="2FA" value="Enabled · TOTP (planned)" />
+          <DetailField
+            label="Last sign-in"
+            value="Tracked on backend"
+          />
+          <DetailField
+            label="Devices"
+            value="Multi-device sessions"
+          />
+          <DetailField
+            label="API tokens"
+            value="Managed in profile"
+          />
         </div>
       </div>
     </div>
   );
 }
 
-function ProfileSecondary() {
+function ProfileSecondary({ me }: { me: UserProfile | null }) {
   return (
     <div className="flex h-full flex-col gap-4 lg:gap-5">
       <div className="rounded-[24px] border border-slate-200/70 bg-white/95 p-4 shadow-[0_22px_80px_rgba(15,23,42,0.18)]">
@@ -762,9 +1005,15 @@ function ProfileSecondary() {
           Workspace preferences
         </span>
         <div className="mt-3 space-y-2 text-sm">
-          <DetailField label="Language" value="English · Russian" />
+          <DetailField
+            label="Language"
+            value="Based on backend locale (default: en)"
+          />
           <DetailField label="Units" value="Metric · 24h time" />
-          <DetailField label="Theme" value="Light · Glass surfaces" />
+          <DetailField
+            label="Theme"
+            value="Light · Glass surfaces"
+          />
         </div>
       </div>
 
@@ -773,17 +1022,21 @@ function ProfileSecondary() {
           Quiet mode
         </span>
         <p className="mt-3 text-[11px] text-slate-600">
-          Keep notifications and surface noise minimal while you are adjusting
-          campaigns. Only important alerts will appear.
+          Keep notifications minimal while you are adjusting campaigns.
+          Only important alerts will appear.
         </p>
       </div>
     </div>
   );
 }
 
-/* ───────────────────── Общие компоненты ───────────────────── */
+/* ───────────────────── Общие компоненты / utils ───────────────────── */
 
-function MetricCard(props: { label: string; value: string; hint: string }) {
+function MetricCard(props: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 shadow-[0_14px_45px_rgba(15,23,42,0.14)]">
       <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -811,10 +1064,43 @@ function DetailField(props: { label: string; value: string }) {
 function badgeClassForStatus(status: string) {
   const base =
     "inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] font-semibold";
-  if (status === "Live" || status === "Paid")
+  const normalized = status.toLowerCase();
+
+  if (normalized === "live" || normalized === "paid")
     return base + " bg-emerald-50 text-emerald-600";
-  if (status === "Scheduled" || status === "Pending")
+  if (normalized === "scheduled" || normalized === "pending")
     return base + " bg-slate-100 text-slate-700";
-  if (status === "Draft") return base + " bg-slate-50 text-slate-500";
+  if (normalized === "draft")
+    return base + " bg-slate-50 text-slate-500";
+  if (normalized === "failed" || normalized === "cancelled")
+    return base + " bg-red-50 text-red-600";
+
   return base + " bg-slate-100 text-slate-700";
+}
+
+function initials(name: string | undefined | null) {
+  if (!name) return "U";
+  const parts = name.split(" ").filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+function humanRole(role: string) {
+  const r = role.toLowerCase();
+  if (r === "admin") return "Admin · Studio";
+  if (r === "owner") return "Owner · Studio";
+  if (r === "user") return "Member";
+  return role;
+}
+
+function calculateThisMonth(invoices: Invoice[]): number {
+  if (invoices.length === 0) return 0;
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(
+    now.getMonth() + 1,
+  ).padStart(2, "0")}`;
+
+  return invoices
+    .filter((i) => i.period_start.startsWith(ym))
+    .reduce((sum, i) => sum + (i.amount_total || 0), 0);
 }

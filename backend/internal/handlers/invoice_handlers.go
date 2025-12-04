@@ -2,11 +2,12 @@ package handlers
 
 import (
     "encoding/json"
-    "mediawork/internal/services"
     "net/http"
     "strconv"
 
     "github.com/go-chi/chi/v5"
+
+    "mediawork/internal/services"
 )
 
 type InvoiceHandler struct {
@@ -37,4 +38,16 @@ func (h *InvoiceHandler) List(w http.ResponseWriter, r *http.Request) {
     }
 
     json.NewEncoder(w).Encode(data)
+}
+
+func (h *InvoiceHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+    id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+
+    inv, err := h.svc.GetByID(r.Context(), id)
+    if err != nil {
+        http.Error(w, "invoice not found", 404)
+        return
+    }
+
+    json.NewEncoder(w).Encode(inv)
 }

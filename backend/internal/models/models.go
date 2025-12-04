@@ -175,20 +175,32 @@ type Creative struct {
 // ─── INVOICES / BILLING ───────────────────────────────────────────────────────
 //
 
+// Invoice — соответствует структуре таблицы invoices в БД
 type Invoice struct {
-	ID        int64      `json:"id"`
-	CompanyID int64      `json:"company_id"`
-	Amount    float64    `json:"amount"`
-	Period    string     `json:"period"`
-	Status    string     `json:"status"`
-	CreatedAt time.Time  `json:"created_at"`
-	PaidAt    *time.Time `json:"paid_at,omitempty"`
+    ID            int64      `json:"id"`
+    CompanyID     int64      `json:"company_id"`
+    InvoiceNumber string     `json:"invoice_number"`
+    
+    PeriodStart   time.Time  `json:"period_start"`
+    PeriodEnd     time.Time  `json:"period_end"`
+
+    AmountTotal   float64    `json:"amount_total"`
+    Currency      string     `json:"currency"`
+
+    Status        string     `json:"status"`       // pending | paid | failed
+    DueDate       *time.Time `json:"due_date,omitempty"`
+    IssuedAt      time.Time  `json:"issued_at"`
+    PaidAt        *time.Time `json:"paid_at,omitempty"`
+
+    CreatedAt     time.Time  `json:"created_at"`
+    UpdatedAt     time.Time  `json:"updated_at"`
 }
 
+// Для PDF
 type InvoicePDF struct {
-	Invoice     Invoice       `json:"invoice"`
-	Company     Company       `json:"company,omitempty"`
-	PlayHistory []PlayHistory `json:"play_history"`
+    Invoice     Invoice       `json:"invoice"`
+    Company     Company       `json:"company"`
+    PlayHistory []PlayHistory `json:"play_history"`
 }
 
 //
