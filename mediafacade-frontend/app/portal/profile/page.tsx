@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { apiFetch } from "@/lib/apiClient";
 import {
   UserCircleIcon,
   KeyIcon,
@@ -10,6 +11,15 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import PageGuard from "@/components/RoleGuard";
+
+/* ------------------ TYPES ------------------ */
+type User = {
+  id: number;
+  email: string;
+  full_name: string;
+  name?: string;
+  role: string;
+};
 
 /* -------------------------------------------------------------
    NOTIFICATION COMPONENT
@@ -23,9 +33,9 @@ function Notification({ msg }: { msg: string }) {
 }
 
 export default function ProfilePage() {
-  const [tab, setTab] = useState<
-    "personal" | "security" | "api" | "company"
-  >("personal");
+  const [tab, setTab] = useState<"personal" | "security" | "api" | "company">(
+    "personal"
+  );
 
   const tabs = [
     { id: "personal", label: "Personal Info", icon: UserCircleIcon },
@@ -35,68 +45,101 @@ export default function ProfilePage() {
   ];
 
   const [notification, setNotification] = useState("");
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const notify = (msg: string) => {
     setNotification(msg);
     setTimeout(() => setNotification(""), 2500);
   };
 
+  /* -------------------------------------------------------------
+     LOAD USER FROM BACKEND /api/me
+  ------------------------------------------------------------- */
+  useEffect(() => {
+    apiFetch<User>("/me")
+      .then((u) => {
+        setUser(u);
+        localStorage.setItem("advertiser_role", u.role);
+        localStorage.setItem("advertiser_name", u.full_name || u.name || "");
+      })
+      .catch((e) => console.error("Failed to load user:", e))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading)
+    return (
+      <div className="p-10 text-slate-600 text-lg">
+        Loading profile...
+      </div>
+    );
+
+  if (!user)
+    return (
+      <div className="p-10 text-red-600 text-lg">
+        Failed to load user profile
+      </div>
+    );
+
   return (
     <PageGuard allow="viewer">
-    <div className="space-y-10 lg:space-y-12">
-      {notification && <Notification msg={notification} />}
+      <div className="space-y-10 lg:space-y-12">
+        {notification && <Notification msg={notification} />}
 
-      {/* HEADER */}
-      <section className="rounded-[32px] border border-white/60 bg-white/80 px-6 py-6 shadow-[0_26px_90px_rgba(15,23,42,0.22)] backdrop-blur-xl">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-            Account
+        {/* HEADER */}
+        <section className="rounded-[32px] border border-white/60 bg-white/80 px-6 py-6 shadow-[0_26px_90px_rgba(15,23,42,0.22)] backdrop-blur-xl">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              Account
+            </div>
+            <h1 className="text-[26px] font-semibold tracking-[-0.03em] text-slate-900">
+              Profile Settings
+            </h1>
+            <p className="mt-1 text-[13px] text-slate-500">
+              Manage your personal info, security, API keys and company roles.
+            </p>
+
+            <p className="mt-2 text-[14px] font-medium text-slate-900">
+              {user.full_name || user.name}
+            </p>
           </div>
-          <h1 className="text-[26px] font-semibold tracking-[-0.03em] text-slate-900">
-            Profile Settings
-          </h1>
-          <p className="mt-1 text-[13px] text-slate-500">
-            Manage your personal info, security, API keys and company roles.
-          </p>
-        </div>
-      </section>
+        </section>
 
-      {/* MAIN PANEL */}
-      <section className="rounded-[36px] border border-white/70 bg-white/80 shadow-[0_32px_120px_rgba(15,23,42,0.22)] backdrop-blur-xl p-0 overflow-hidden">
-        <div className="grid lg:grid-cols-[240px_1fr]">
+        {/* MAIN PANEL */}
+        <section className="rounded-[36px] border border-white/70 bg-white/80 shadow-[0_32px_120px_rgba(15,23,42,0.22)] backdrop-blur-xl p-0 overflow-hidden">
+          <div className="grid lg:grid-cols-[240px_1fr]">
+            {/* LEFT NAV */}
+            <div className="border-r border-slate-200/60 bg-white/40 backdrop-blur-xl p-6 space-y-2">
+              {tabs.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id as any)}
+                  className={`
+                    w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition
+                    text-left text-[14px]
+                    ${
+                      tab === t.id
+                        ? "bg-slate-900 text-white shadow-[0_6px_40px_rgba(15,23,42,0.25)]"
+                        : "text-slate-700 hover:bg-slate-100/70"
+                    }
+                  `}
+                >
+                  <t.icon className="h-5 w-5 opacity-80" />
+                  {t.label}
+                </button>
+              ))}
+            </div>
 
-          {/* LEFT NAV */}
-          <div className="border-r border-slate-200/60 bg-white/40 backdrop-blur-xl p-6 space-y-2">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id as any)}
-                className={`
-                  w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition
-                  text-left text-[14px]
-                  ${
-                    tab === t.id
-                      ? "bg-slate-900 text-white shadow-[0_6px_40px_rgba(15,23,42,0.25)]"
-                      : "text-slate-700 hover:bg-slate-100/70"
-                  }
-                `}
-              >
-                <t.icon className="h-5 w-5 opacity-80" />
-                {t.label}
-              </button>
-            ))}
+            {/* RIGHT CONTENT */}
+            <div className="p-8">
+              {tab === "personal" && <PersonalInfo user={user} notify={notify} />}
+              {tab === "security" && <SecuritySettings notify={notify} />}
+              {tab === "api" && <ApiKeys notify={notify} />}
+              {tab === "company" && <CompanyAccess user={user} />}
+            </div>
           </div>
-
-          {/* RIGHT CONTENT */}
-          <div className="p-8">
-            {tab === "personal" && <PersonalInfo notify={notify} />}
-            {tab === "security" && <SecuritySettings notify={notify} />}
-            {tab === "api" && <ApiKeys notify={notify} />}
-            {tab === "company" && <CompanyAccess />}
-          </div>
-        </div>
-      </section>
-    </div>
+        </section>
+      </div>
     </PageGuard>
   );
 }
@@ -104,13 +147,19 @@ export default function ProfilePage() {
 /* -------------------------------------------------------------------
    PERSONAL INFO
 ------------------------------------------------------------------- */
-function PersonalInfo({ notify }: { notify: (msg: string) => void }) {
-  const [name, setName] = useState("Vladislav Scvorcov");
-  const [email, setEmail] = useState("vs@shiftam.com");
-  const [phone, setPhone] = useState("+7 (968) 839-38-00");
+function PersonalInfo({
+  user,
+  notify,
+}: {
+  user: User;
+  notify: (msg: string) => void;
+}) {
+  const [name, setName] = useState(user.full_name || user.name || "");
+  const [email, setEmail] = useState(user.email);
+  const [phone, setPhone] = useState("");
 
   const handleSave = () => {
-    notify("Profile updated");
+    notify("Profile updated (not implemented yet)");
   };
 
   return (
@@ -119,12 +168,13 @@ function PersonalInfo({ notify }: { notify: (msg: string) => void }) {
       <div className="flex items-center gap-6 rounded-[28px] border border-slate-200 bg-white/80 p-6 shadow-[0_22px_70px_rgba(15,23,42,0.15)]">
         <div className="h-20 w-20 rounded-full bg-slate-300 shadow-inner" />
         <div>
-          <h2 className="text-[20px] font-semibold text-slate-900">
-            {name}
-          </h2>
+          <h2 className="text-[20px] font-semibold text-slate-900">{name}</h2>
           <p className="text-[14px] text-slate-600">{email}</p>
           <p className="text-[12px] text-slate-400 mt-1">
-            Role: <span className="font-semibold text-slate-600">Admin</span>
+            Role:{" "}
+            <span className="font-semibold text-slate-600">
+              {user.role}
+            </span>
           </p>
         </div>
       </div>
@@ -159,17 +209,12 @@ function SecuritySettings({ notify }: { notify: (msg: string) => void }) {
       notify("Passwords do not match");
       return;
     }
-    notify("Password changed");
-    setOldPwd("");
-    setNewPwd("");
-    setConfirmPwd("");
+    notify("Password changed (stub)");
   };
 
   return (
     <div className="space-y-8">
-      <h2 className="text-[20px] font-semibold text-slate-900">
-        Security
-      </h2>
+      <h2 className="text-[20px] font-semibold text-slate-900">Security</h2>
 
       <div className="rounded-[28px] border border-slate-200 bg-white/70 p-6 shadow-[0_18px_70px_rgba(15,23,42,0.15)] space-y-6">
         <Field label="Old password" value={oldPwd} onChange={setOldPwd} password />
@@ -193,20 +238,14 @@ function SecuritySettings({ notify }: { notify: (msg: string) => void }) {
 }
 
 /* -------------------------------------------------------------------
-   API KEYS
+   API KEYS  (local-only for now)
 ------------------------------------------------------------------- */
 function ApiKeys({ notify }: { notify: (msg: string) => void }) {
-  const [keys, setKeys] = useState([
-    {
-      id: "",
-      value: "",
-      created: "2025-01-10",
-    },
-  ]);
+  const [keys, setKeys] = useState([]);
 
   const generateKey = () => {
     const newKey = {
-      id: `key_${Math.random().toString(36).slice(2, 7)}`,
+      id: crypto.randomUUID(),
       value: "sk_live_" + Math.random().toString(36).slice(2, 20),
       created: new Date().toISOString().split("T")[0],
     };
@@ -239,9 +278,7 @@ function ApiKeys({ notify }: { notify: (msg: string) => void }) {
               <span className="font-mono text-[13px] text-slate-700">
                 {k.value.replace(/(?<=.{10}).*/, "****************")}
               </span>
-              <span className="text-[11px] text-slate-400">
-                Created: {k.created}
-              </span>
+              <span className="text-[11px] text-slate-400">Created: {k.created}</span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -268,20 +305,15 @@ function ApiKeys({ notify }: { notify: (msg: string) => void }) {
 }
 
 /* -------------------------------------------------------------------
-   COMPANY ACCESS
+   COMPANY ACCESS  (will connect later)
 ------------------------------------------------------------------- */
-function CompanyAccess() {
-  const roles = [
-    { company: "MediaWork", role: "Owner" },
-    { company: "Shiftam", role: "Admin" },
-    { company: "AdSpace LTD", role: "Viewer" },
-  ];
+function CompanyAccess({ user }: { user: User }) {
+  // TODO: позже заменим на реальный запрос /companies/user
+  const roles = [{ company: "Your Company", role: user.role }];
 
   return (
     <div className="space-y-8">
-      <h2 className="text-[20px] font-semibold text-slate-900">
-        Company Access
-      </h2>
+      <h2 className="text-[20px] font-semibold text-slate-900">Company Access</h2>
 
       <div className="rounded-[28px] border border-slate-200 bg-white/70 p-6 shadow-[0_18px_70px_rgba(15,23,42,0.15)] space-y-4">
         {roles.map((r, i) => (

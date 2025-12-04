@@ -3,6 +3,7 @@ package repositories
 import (
     "context"
     "database/sql"
+    "log"
 
     "mediawork/internal/models"
 )
@@ -71,10 +72,17 @@ func (r *UserRepository) Update(ctx context.Context, u *models.User) error {
 // --------------------- GET BY ID ---------------------
 func (r *UserRepository) GetByID(ctx context.Context, id int64) (*models.User, error) {
     query := `
-        SELECT id, email, full_name, role, created_at, updated_at
+        SELECT 
+            id, 
+            email, 
+            full_name,
+            global_role AS role,
+            created_at,
+            created_at AS updated_at -- временная заглушка
         FROM users
         WHERE id = $1
     `
+
     var u models.User
     err := r.db.QueryRowContext(ctx, query, id).
         Scan(&u.ID, &u.Email, &u.FullName, &u.Role, &u.CreatedAt, &u.UpdatedAt)
@@ -88,16 +96,25 @@ func (r *UserRepository) GetByID(ctx context.Context, id int64) (*models.User, e
 // --------------------- GET BY EMAIL ---------------------
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
     query := `
-        SELECT id, email, full_name, password_hash, role, created_at, updated_at
+        SELECT 
+            id, 
+            email, 
+            full_name, 
+            password_hash, 
+            global_role AS role,
+            created_at,
+            created_at -- пока заглушка для updated_at
         FROM users
         WHERE email = $1
     `
+
     var u models.User
     err := r.db.QueryRowContext(ctx, query, email).
         Scan(&u.ID, &u.Email, &u.FullName, &u.PasswordHash, &u.Role, &u.CreatedAt, &u.UpdatedAt)
     if err != nil {
         return nil, err
     }
+    log.Println("Fetched user by email:", u.Email)
     u.Name = u.FullName
     return &u, nil
 }

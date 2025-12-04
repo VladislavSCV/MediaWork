@@ -66,10 +66,17 @@ func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*models.Invo
 //
 func (r *InvoiceRepository) List(ctx context.Context, limit, offset int) ([]models.Invoice, error) {
     query := `
-        SELECT id, company_id, amount, period, status, created_at, paid_at
+        SELECT
+            id,
+            company_id,
+            amount_total AS amount,
+            to_char(period_start, 'YYYY-MM') AS period,
+            status,
+            created_at,
+            paid_at
         FROM invoices
         ORDER BY created_at DESC
-        LIMIT $1 OFFSET $2
+        LIMIT $1 OFFSET $2;
     `
     rows, err := r.db.QueryContext(ctx, query, limit, offset)
     if err != nil {

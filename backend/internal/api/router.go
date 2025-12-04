@@ -108,16 +108,19 @@ func NewRouter() (http.Handler, error) {
             // Кампании
             pr.Route("/campaigns", func(cr chi.Router) {
                 cr.Post("/", campaignH.Create)
+                cr.Get("/", campaignH.List)
                 cr.Get("/{id}", campaignH.Get)
             })
 
             // Фасады
             pr.Route("/facades", func(fr chi.Router) {
+                fr.Get("/", facadeH.List)
                 fr.Get("/{id}/status", facadeH.Status)
             })
 
             // Инвойсы
             pr.Route("/invoices", func(ir chi.Router) {
+                ir.Get("/", invoiceH.List) 
                 ir.Get("/{id}/pdf-data", invoiceH.GetPDF)
             })
 

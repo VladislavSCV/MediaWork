@@ -28,3 +28,14 @@ func (h *FacadeHandler) Status(w http.ResponseWriter, r *http.Request) {
 
     json.NewEncoder(w).Encode(data)
 }
+
+
+func (h *FacadeHandler) List(w http.ResponseWriter, r *http.Request) {
+    data, err := h.svc.List(r.Context())
+    if err != nil {
+        http.Error(w, err.Error(), 500)
+        return
+    }
+
+    json.NewEncoder(w).Encode(data)
+}

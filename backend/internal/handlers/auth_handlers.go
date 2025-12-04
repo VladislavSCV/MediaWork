@@ -1,9 +1,10 @@
 package handlers
 
 import (
-    "encoding/json"
-    "mediawork/internal/services"
-    "net/http"
+	"encoding/json"
+	"log"
+	"mediawork/internal/services"
+	"net/http"
 )
 
 type AuthHandler struct {
@@ -24,6 +25,9 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
     json.NewDecoder(r.Body).Decode(&req)
 
     token, user, err := h.auth.Login(r.Context(), req.Email, req.Password)
+    log.Println("Login attempt for:", req.Email)
+    log.Println("Error:", err)
+    log.Println("Generated Token:", token)
     if err != nil {
         http.Error(w, "invalid credentials", 401)
         return

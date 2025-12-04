@@ -10,26 +10,30 @@ export default function LoginPage() {
   const [pass, setPass] = useState("");
 
   async function doLogin() {
-    console.log("doLogin called with", email, pass);
-    const res = await fetch("http://localhost:8080/api/portal/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password: pass }),
-      headers: { "Content-Type": "application/json" },
-    });
+  console.log("doLogin called with", email, pass);
 
-    console.log("response", res);
+  const res = await fetch("http://localhost:8080/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password: pass }),
+    headers: { "Content-Type": "application/json" },
+  });
 
-    if (!res.ok) {
-      console.log("invalid login");
-      alert("Invalid login");
-      return;
-    }
-
-    const data = await res.json();
-    console.log("data", data);
-    localStorage.setItem("advertiser_token", data.token);
-    router.push("/portal/dashboard");
+  if (!res.ok) {
+    console.log("invalid login");
+    alert("Invalid login");
+    return;
   }
+
+  const data = await res.json();
+  console.log("data", data);
+
+  // сохраняем токен и роль для RoleGuard
+  localStorage.setItem("advertiser_token", data.token);
+  localStorage.setItem("advertiser_role", data.user.role);
+  localStorage.setItem("advertiser_name", data.user.name || data.user.full_name);
+
+  router.push("/portal/dashboard");
+}
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0f14] text-white">

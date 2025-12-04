@@ -74,3 +74,40 @@ func (r *CampaignRepository) GetByID(ctx context.Context, id int64) (*models.Cam
 
     return &c, nil
 }
+
+func (r *CampaignRepository) List(ctx context.Context) ([]models.Campaign, error) {
+    query := `
+        SELECT 
+            id,
+            company_id,
+            name,
+            external_ref AS description,   -- временно, т.к. в БД нет description
+            start_at     AS start_time,
+            end_at       AS end_time,
+            status,
+            0 AS priority,                 -- в твоей схеме нет priority → возвращаем 0
+            created_at
+        FROM campaigns
+        ORDER BY created_at DESC;
+    `
+    rows, err := r.db.QueryContext(ctx, query)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    list := []models.Campaign{}
+    for rows.Next() {
+        var c models.Campaign
+        if err := rows.Scan(
+            &c.ID, &c.CompanyID, &c.Name, &c.Description,
+            &c.StartTime, &c.EndTime, &c.Status,
+            &c.Priority, &c.CreatedAt,
+        ); err != nil {
+            return nil, err
+        }
+        list = append(list, c)
+    }
+
+    return list, nil
+}

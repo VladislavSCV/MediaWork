@@ -48,21 +48,27 @@ type CompanyMember struct {
 //
 
 type Facade struct {
-	ID          int64     `json:"id"`
-	Name        string    `json:"name"`
-	City        string    `json:"city"`
-	Address     string    `json:"address"`
-	// варианты представления размера
-	WidthCells  int       `json:"width_cells"`
-	HeightCells int       `json:"height_cells"`
-	WidthPx     int       `json:"width_px"`
-	HeightPx    int       `json:"height_px"`
-	Status      string    `json:"status"`
-	Latitude    float64   `json:"latitude"`
-	Longitude   float64   `json:"longitude"`
-	IsActive    bool      `json:"is_active"`
-	CreatedAt   time.Time `json:"created_at"`
+    ID          int64      `json:"id"`
+    Code        string     `json:"code"`
+    Name        string     `json:"name"`
+    Address     string     `json:"address"`
+    Latitude    float64    `json:"latitude"`
+    Longitude   float64    `json:"longitude"`
+
+    WidthPx     int        `json:"width_px"`
+    HeightPx    int        `json:"height_px"`
+    Rows        int        `json:"rows"`      // virtual_rows
+    Cols        int        `json:"cols"`      // virtual_cols
+
+    Status      string     `json:"status"`
+    LastSeen    *time.Time `json:"last_seen"`
+    LatencyMS   *int       `json:"latency_ms"`
+    
+    CreatedAt   time.Time  `json:"created_at"`
+    UpdatedAt   time.Time  `json:"updated_at"`
 }
+
+
 
 type FacadeStatus struct {
 	FacadeID     int64     `json:"facade_id"`

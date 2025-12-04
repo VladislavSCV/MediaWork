@@ -28,3 +28,13 @@ func (h *InvoiceHandler) GetPDF(w http.ResponseWriter, r *http.Request) {
 
     json.NewEncoder(w).Encode(data)
 }
+
+func (h *InvoiceHandler) List(w http.ResponseWriter, r *http.Request) {
+    data, err := h.svc.List(r.Context())
+    if err != nil {
+        http.Error(w, err.Error(), 500)
+        return
+    }
+
+    json.NewEncoder(w).Encode(data)
+}

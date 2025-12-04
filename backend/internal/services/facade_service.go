@@ -33,3 +33,7 @@ func (s *FacadeService) GetStatus(ctx context.Context, facadeID int64) (*models.
         RecentPlays: recent,
     }, nil
 }
+
+func (s *FacadeService) List(ctx context.Context) ([]models.Facade, error) {
+    return s.facades.List(ctx)
+}

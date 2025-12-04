@@ -93,7 +93,6 @@ func (r *CampaignParticipationRepository) GetFacadesForCampaign(
         if err := rows.Scan(
             &f.ID,
             &f.Name,
-            &f.City,
             &f.Address,
             &f.WidthPx,
             &f.HeightPx,

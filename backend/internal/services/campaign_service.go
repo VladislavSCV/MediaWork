@@ -65,4 +65,6 @@ func (s *CampaignService) GetDetailed(ctx context.Context, id int64) (*models.Ca
     }, nil
 }
 
-
+func (s *CampaignService) List(ctx context.Context) ([]models.Campaign, error) {
+    return s.repoCampaigns.List(ctx)
+}
