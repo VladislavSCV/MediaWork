@@ -32,7 +32,7 @@ export default function LoginPage() {
   localStorage.setItem("advertiser_role", data.user.role);
   localStorage.setItem("advertiser_name", data.user.name || data.user.full_name);
 
-  router.push("/portal/dashboard");
+  router.push("/portal");
 }
 
   return (

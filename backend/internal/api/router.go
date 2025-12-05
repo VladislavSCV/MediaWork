@@ -51,6 +51,7 @@ func NewRouter() (http.Handler, error) {
 	liveSvc := services.NewLiveStreamService(liveStreamRepo)
 	adminSvc := services.NewAdminService(userRepo, companyRepo)
 
+
 	// ───────────────── Handlers ─────────────────
 	authH := handlers.NewAuthHandler(authSvc)
 	userH := handlers.NewUserHandler(userSvc)
@@ -60,6 +61,8 @@ func NewRouter() (http.Handler, error) {
 	facadeH := handlers.NewFacadeHandler(facadeSvc)
 	liveH := handlers.NewLiveHandler(liveSvc)
 	adminH := handlers.NewAdminHandler(adminSvc)
+	live := NewFacadeLiveHandler(facadeSvc)
+
 
 	// ───────────────── Router ─────────────────
 	r := chi.NewRouter()
@@ -80,6 +83,7 @@ func NewRouter() (http.Handler, error) {
 		MaxAge:           300,
 	}))
 
+	r.Get("/ws/facade/{id}", live.Stream)
 	// ───────────────── API ─────────────────
 	r.Route("/api", func(api chi.Router) {
 		// -------- Public auth --------

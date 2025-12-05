@@ -75,9 +75,13 @@ const recent = data.recent_plays || [];
 
             {/* ACTION BUTTONS */}
             <div className="flex flex-col items-end gap-3 pointer-events-auto">
-              <button className="rounded-xl bg-slate-900 px-4 py-2 text-[12px] font-semibold text-white shadow-[0_12px_35px_rgba(15,23,42,0.6)] hover:bg-slate-800">
-                Live view
-              </button>
+            <button
+              onClick={() => router.push(`/portal/facades/${facadeId}/live`)}
+              className="rounded-xl bg-slate-900 px-4 py-2 text-[12px] font-semibold text-white shadow-[0_12px_35px_rgba(15,23,42,0.6)] hover:bg-slate-800"
+            >
+              Live view
+            </button>
+
 
               <button className="rounded-xl bg-white/80 border border-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-700 hover:bg-white">
                 Diagnostics
