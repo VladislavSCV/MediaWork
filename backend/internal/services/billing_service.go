@@ -27,7 +27,7 @@ func (s *BillingService) PreparePDF(ctx context.Context, invoiceID int64) (*mode
 }
 
 func (s *BillingService) List(ctx context.Context) ([]models.Invoice, error) {
-	return s.invoices.List(ctx, 1000, 0) // лимит можешь поменять
+	return s.invoices.List(ctx) // лимит можешь поменять
 }
 
 func (s *BillingService) GetByID(ctx context.Context, id int64) (*models.Invoice, error) {

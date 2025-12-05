@@ -322,7 +322,7 @@ function DashboardBilling({
               id={inv.id}
               date={inv.created_at.slice(0, 10)}
               label={`Invoice #${inv.id}`}
-              amount={`₽ ${inv.amount.toLocaleString()}`}
+              amount={`₽ ${inv.amount_total.toLocaleString()}`}
               status={inv.status === "paid" ? "Scheduled" : "Draft"}
             />
           ))}

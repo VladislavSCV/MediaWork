@@ -99,8 +99,8 @@ func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*models.Invo
 }
 
 // --------------------- LIST ALL ---------------------
-func (r *InvoiceRepository) List(ctx context.Context, limit, offset int) ([]models.Invoice, error) {
-	query := `
+func (r *InvoiceRepository) List(ctx context.Context) ([]models.Invoice, error) {
+    query := `
         SELECT
             id,
             company_id,
@@ -110,43 +110,50 @@ func (r *InvoiceRepository) List(ctx context.Context, limit, offset int) ([]mode
             amount_total,
             currency,
             status,
+            due_date,
             issued_at,
             paid_at,
-            created_at
+            created_at,
+            updated_at
         FROM invoices
         ORDER BY created_at DESC
-        LIMIT $1 OFFSET $2
     `
-	rows, err := r.db.QueryContext(ctx, query, limit, offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+    
+    rows, err := r.db.QueryContext(ctx, query)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
 
-	items := []models.Invoice{}
+    invoices := []models.Invoice{}
 
-	for rows.Next() {
-		var inv models.Invoice
-		if err := rows.Scan(
-			&inv.ID,
-			&inv.CompanyID,
-			&inv.InvoiceNumber,
-			&inv.PeriodStart,
-			&inv.PeriodEnd,
-			&inv.AmountTotal,
-			&inv.Currency,
-			&inv.Status,
-			&inv.IssuedAt,
-			&inv.PaidAt,
-			&inv.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, inv)
-	}
+    for rows.Next() {
+        var inv models.Invoice
+        err = rows.Scan(
+            &inv.ID,
+            &inv.CompanyID,
+            &inv.InvoiceNumber,
+            &inv.PeriodStart,
+            &inv.PeriodEnd,
+            &inv.AmountTotal,
+            &inv.Currency,
+            &inv.Status,
+            &inv.DueDate,
+            &inv.IssuedAt,
+            &inv.PaidAt,
+            &inv.CreatedAt,
+            &inv.UpdatedAt,
+        )
+        if err != nil {
+            return nil, err
+        }
 
-	return items, nil
+        invoices = append(invoices, inv)
+    }
+
+    return invoices, nil
 }
+
 
 // --------------------- LIST BY COMPANY ---------------------
 func (r *InvoiceRepository) ListByCompany(ctx context.Context, companyID int64) ([]models.Invoice, error) {

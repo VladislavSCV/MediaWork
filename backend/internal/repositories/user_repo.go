@@ -78,7 +78,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id int64) (*models.User, e
             full_name,
             global_role AS role,
             created_at,
-            created_at AS updated_at -- временная заглушка
+            created_at AS updated_at
         FROM users
         WHERE id = $1
     `
@@ -89,6 +89,8 @@ func (r *UserRepository) GetByID(ctx context.Context, id int64) (*models.User, e
     if err != nil {
         return nil, err
     }
+    log.Println("Fetched user by ID:", u.ID)
+    log.Println("User full name:", u.FullName)
     u.Name = u.FullName
     return &u, nil
 }

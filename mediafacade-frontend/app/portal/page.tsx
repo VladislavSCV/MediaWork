@@ -15,7 +15,6 @@ type UserProfile = {
   full_name: string;
   name?: string;
   role: string;
-  created_at: string;
 };
 
 type Facade = {
@@ -25,11 +24,11 @@ type Facade = {
   address: string;
   latitude?: number;
   longitude?: number;
-  width_px: number;
-  height_px: number;
-  rows: number;
-  cols: number;
-  status: string; // "online" | "offline" | "degraded" и т.п.
+  width_px?: number;
+  height_px?: number;
+  rows?: number;
+  cols?: number;
+  status: string; // "online" | "offline" | "degraded"
   last_seen?: string | null;
 };
 
@@ -127,10 +126,10 @@ export default function PortalHomePage() {
       try {
         const [meRes, facadesRes, campaignsRes, invoicesRes] =
           await Promise.all([
-            apiFetch("/me"),
-            apiFetch("/facades"),
-            apiFetch("/campaigns"),
-            apiFetch("/invoices"),
+            apiFetch<UserProfile>("/me"),
+            apiFetch<Facade[]>("/facades"),
+            apiFetch<Campaign[]>("/campaigns"),
+            apiFetch<Invoice[]>("/invoices"),
           ]);
 
         if (cancelled) return;
@@ -141,6 +140,12 @@ export default function PortalHomePage() {
         setInvoices(invoicesRes || []);
       } catch (err) {
         console.error("Failed to load portal data:", err);
+        if (!cancelled) {
+          setMe(null);
+          setFacades([]);
+          setCampaigns([]);
+          setInvoices([]);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -152,8 +157,7 @@ export default function PortalHomePage() {
     };
   }, []);
 
-  const displayName =
-    me?.full_name || me?.name || "User";
+  const displayName = me?.full_name || me?.name || "User";
   const roleLabel = me ? humanRole(me.role) : "—";
 
   const facadesCount = facades.length;
@@ -535,7 +539,7 @@ function DashboardScreen({
         <MetricCard
           label="Recently added"
           value={
-            campaigns.slice(0, 1)[0]?.name
+            campaigns[0]?.name
               ? campaigns[0].name
               : "No campaigns yet"
           }
@@ -668,7 +672,7 @@ function CampaignsScreen({ campaigns }: { campaigns: Campaign[] }) {
             View all
           </Link>
         </div>
-        <div className="h-32 rounded-2xl bg-gradient-to-r from-slate-50 via-slate-100 to-slate-50 flex items-center justify-center text-[11px] text-slate-400">
+        <div className="flex h-32 items-center justify-center rounded-2xl bg-gradient-to-r from-slate-50 via-slate-100 to-slate-50 text-[11px] text-slate-400">
           Timeline placeholder (attach chart later)
         </div>
       </div>
@@ -821,7 +825,7 @@ function InvoicesScreen({ invoices }: { invoices: Invoice[] }) {
           {latest.map((i) => (
             <Link
               key={i.id}
-              href="/portal/invoices"
+              href={`/portal/invoices/${i.id}`}
               className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.5fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)] items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-left transition hover:-translate-y-[1px] hover:bg-slate-50 hover:shadow-[0_16px_55px_rgba(15,23,42,0.2)]"
             >
               <span className="font-mono text-[11px] text-slate-500">

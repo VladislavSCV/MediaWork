@@ -7,8 +7,8 @@ import { apiFetch } from "@/lib/apiClient";
 
 export default function FacadeDetailsPage() {
   const router = useRouter();
-  const { id } = useParams(); // <-- ВОТ ТАК ПРАВИЛЬНО
-  const facadeId = Number(id); // теперь не NaN
+  const { id } = useParams(); 
+  const facadeId = Number(id);
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
