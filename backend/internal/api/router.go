@@ -125,6 +125,7 @@ func NewRouter() (http.Handler, error) {
 			// Инвойсы
 			pr.Route("/invoices", func(ir chi.Router) {
 				ir.Get("/", invoiceH.List)
+				ir.Post("/", invoiceH.Create)
 				ir.Get("/{id}", invoiceH.GetByID)
 				ir.Get("/{id}/pdf", invoiceH.GetPDF)
 			})

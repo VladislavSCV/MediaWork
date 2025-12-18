@@ -463,7 +463,7 @@ function primaryRouteFor(id: ScreenId): string {
     case "campaigns":
       return "/portal/campaigns/create";
     case "invoices":
-      return "/portal/invoices";
+      return "/portal/invoices/create";
     case "profile":
       return "/portal/profile";
   }

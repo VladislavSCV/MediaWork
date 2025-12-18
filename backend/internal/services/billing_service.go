@@ -33,3 +33,8 @@ func (s *BillingService) List(ctx context.Context) ([]models.Invoice, error) {
 func (s *BillingService) GetByID(ctx context.Context, id int64) (*models.Invoice, error) {
 	return s.invoices.GetByID(ctx, id)
 }
+
+// --------------------- CREATE INVOICE ---------------------
+func (s *BillingService) Create(ctx context.Context, inv *models.Invoice) (error) {
+    return s.invoices.Create(ctx, inv)
+}
