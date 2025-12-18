@@ -919,10 +919,10 @@ function InvoicesSecondary({ invoices }: { invoices: Invoice[] }) {
         <div className="mt-3 space-y-2 text-sm">
           <p className="text-[11px] text-slate-600">
             Export billing data into external accounting tools (CSV,
-            XLSX, etc.). Integrations can be added later.
+            PDF, etc.). 
           </p>
           <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-            {["CSV", "XLSX", "XML", "API"].map((fmt) => (
+            {["CSV", "PDF"].map((fmt) => (
               <span
                 key={fmt}
                 className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1"

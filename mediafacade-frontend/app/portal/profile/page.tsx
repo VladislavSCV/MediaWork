@@ -41,7 +41,6 @@ export default function ProfilePage() {
     { id: "personal", label: "Personal Info", icon: UserCircleIcon },
     { id: "security", label: "Security", icon: ShieldCheckIcon },
     { id: "api", label: "API Keys", icon: KeyIcon },
-    { id: "company", label: "Company Access", icon: BuildingOffice2Icon },
   ];
 
   const [notification, setNotification] = useState("");
@@ -159,6 +158,7 @@ function PersonalInfo({
   const [phone, setPhone] = useState("");
 
   const handleSave = () => {
+
     notify("Profile updated (not implemented yet)");
   };
 
@@ -299,34 +299,6 @@ function ApiKeys({ notify }: { notify: (msg: string) => void }) {
         >
           Generate new key
         </button>
-      </div>
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------
-   COMPANY ACCESS  (will connect later)
-------------------------------------------------------------------- */
-function CompanyAccess({ user }: { user: User }) {
-  // TODO: позже заменим на реальный запрос /companies/user
-  const roles = [{ company: "Your Company", role: user.role }];
-
-  return (
-    <div className="space-y-8">
-      <h2 className="text-[20px] font-semibold text-slate-900">Company Access</h2>
-
-      <div className="rounded-[28px] border border-slate-200 bg-white/70 p-6 shadow-[0_18px_70px_rgba(15,23,42,0.15)] space-y-4">
-        {roles.map((r, i) => (
-          <div
-            key={i}
-            className="rounded-xl border border-slate-300 bg-white/80 p-4 shadow-sm flex justify-between"
-          >
-            <span className="text-[14px] text-slate-700">{r.company}</span>
-            <span className="text-[13px] font-medium text-slate-500">
-              {r.role}
-            </span>
-          </div>
-        ))}
       </div>
     </div>
   );

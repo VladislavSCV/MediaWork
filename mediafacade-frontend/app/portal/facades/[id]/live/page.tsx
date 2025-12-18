@@ -73,12 +73,33 @@ export default function FacadeLivePage() {
         </div>
 
         {/* LIVE PREVIEW */}
-        <div className="rounded-3xl border bg-slate-100 shadow p-4 flex items-center justify-center h-[500px]">
+        <div className="relative rounded-3xl border bg-slate-100 shadow-lg p-4 flex items-center justify-center h-[500px]">
+          {/* Разделение изображения на несколько частей */}
           {lastFrame ? (
-            <img
-              src={`${lastFrame}`}
-              className="max-h-full max-w-full rounded-xl shadow"
-            />
+            <div className="grid grid-cols-3 gap-2 w-full h-full">
+              {/* Разделяем изображение на 3 части */}
+              <div className="col-span-1">
+                <img
+                  src={lastFrame}
+                  className="object-cover w-full h-full rounded-xl shadow-lg"
+                  alt="Live Facade"
+                />
+              </div>
+              <div className="col-span-1">
+                <img
+                  src={lastFrame}
+                  className="object-cover w-full h-full rounded-xl shadow-lg"
+                  alt="Live Facade"
+                />
+              </div>
+              <div className="col-span-1">
+                <img
+                  src={lastFrame}
+                  className="object-cover w-full h-full rounded-xl shadow-lg"
+                  alt="Live Facade"
+                />
+              </div>
+            </div>
           ) : (
             <div className="text-[14px] text-slate-500">
               Waiting for live frames…

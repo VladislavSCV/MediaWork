@@ -47,7 +47,7 @@ type Facade = {
 type Invoice = {
   id: number;
   company_id: number;
-  amount: number;
+  amount_total: number;
   period: string;
   status: string;
   created_at: string;
@@ -148,13 +148,6 @@ export default function DashboardPage() {
                 Live delivery · <span className="font-mono">99.4%</span>
               </div>
 
-              <button
-                type="button"
-                onClick={() => console.log("Export clicked")}
-                className="rounded-2xl border border-slate-200/70 bg-white/80 px-3 py-1.5 cursor-pointer shadow-[0_10px_32px_rgba(15,23,42,0.16)] text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600"
-              >
-                Export report
-              </button>
             </div>
 
           </div>
@@ -189,7 +182,7 @@ export default function DashboardPage() {
 
               <SummaryCard
                 label="Spend this month"
-                value={`₽ ${invoices.reduce((acc, x) => acc + x.amount, 0).toLocaleString()}`}
+                value={`₽ ${invoices.reduce((acc, x) => acc + x.amount_total, 0).toLocaleString()}`}
                 hint="Forecast: ₽ 2.10M"
                 highlighted={canSeeBilling}
                 locked={!canSeeBilling}
@@ -197,7 +190,7 @@ export default function DashboardPage() {
             </div>
 
             {/* CHART + BILLING */}
-            <DashboardChartAndBilling canSeeBilling={canSeeBilling} invoices={invoices} />
+            {/* <DashboardChartAndBilling canSeeBilling={canSeeBilling} invoices={invoices} /> */}
 
             {/* CAMPAIGNS + FACADES + SCHEDULE */}
             <DashboardLists campaigns={campaigns} facades={facades} />
@@ -282,7 +275,7 @@ function DashboardBilling({
           <div className="space-y-3">
             <div className="flex items-baseline justify-between">
               <div className="text-[26px] font-semibold tracking-[-0.04em] text-slate-900">
-                ₽ {invoices.reduce((acc, x) => acc + x.amount, 0).toLocaleString()}
+                ₽ {invoices.reduce((acc, x) => acc + x.amount_total, 0).toLocaleString()}
               </div>
               <div className="text-[11px] text-slate-500">Budget: ₽ 2.50M</div>
             </div>
@@ -431,7 +424,7 @@ function DashboardLists({
    SIMPLE COMPONENTS
    ============================================================================================ */
 
-const chartHeights = [42, 65, 52, 78, 60, 88, 55];
+const chartHeights = [0, 0, 0, 0, 0, 0, 0];
 
 function DashboardChart() {
   return (

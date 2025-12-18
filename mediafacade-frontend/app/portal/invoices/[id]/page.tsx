@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import PageGuard from "@/components/RoleGuard";
 import { apiFetch } from "@/lib/apiClient";
+import { jsPDF } from "jspdf";
 
 type Invoice = {
   id: number;
@@ -27,7 +28,7 @@ type InvoiceLine = {
 
 type InvoiceDetails = {
   invoice: Invoice;
-  lines: InvoiceLine[];
+  lines?: InvoiceLine[]; // Строки инвойса могут быть необязательными
 };
 
 export default function InvoiceDetailsPage() {
@@ -38,12 +39,19 @@ export default function InvoiceDetailsPage() {
   useEffect(() => {
     if (!id) return;
 
+    console.log(`Fetching data for invoice ID: ${id}`);  // Дебаг
     apiFetch(`/invoices/${id}`)
-      .then((res) => setData(res))
-      .catch((err) => console.error("Failed to load invoice:", err))
+      .then((res) => {
+        console.log("Data loaded: ", res);  // Дебаг
+        setData(res);
+      })
+      .catch((err) => {
+        console.error("Failed to load invoice:", err);
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
+  // Если данные еще не загружены, показываем загрузку
   if (loading) {
     return (
       <PageGuard allow="viewer">
@@ -52,22 +60,23 @@ export default function InvoiceDetailsPage() {
     );
   }
 
+  // Если данных нет (например, инвойс не найден), показываем ошибку
   if (!data) {
     return (
       <PageGuard allow="viewer">
         <div className="p-10 text-center text-red-500">
-          Invoice not found.
+          Invoice not found. {id}
         </div>
       </PageGuard>
     );
   }
 
-  const inv = (data as any).invoice ?? (data as any);
+  const inv = data; // Теперь точно есть инвойс
+  const lines = data.lines || []; // Линии инвойса (если они есть)
 
   return (
     <PageGuard allow="viewer">
       <div className="min-h-screen w-full bg-gradient-to-br from-white via-[#f5f7fa] to-[#e5edf5] p-8">
-
         {/* Back Button */}
         <Link
           href="/portal/invoices"
@@ -78,7 +87,6 @@ export default function InvoiceDetailsPage() {
 
         {/* Container */}
         <div className="mt-6 rounded-[32px] border border-white/70 bg-white/80 p-8 shadow-[0_28px_90px_rgba(15,23,42,0.18)] backdrop-blur-xl">
-
           {/* Header */}
           <h1 className="text-[28px] font-semibold text-slate-900">
             Invoice #{inv.invoice_number}
@@ -90,7 +98,6 @@ export default function InvoiceDetailsPage() {
 
           {/* Summary */}
           <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-
             <div className="rounded-2xl border border-slate-200/80 bg-white/70 p-4">
               <h2 className="text-[13px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Overview
@@ -142,28 +149,34 @@ export default function InvoiceDetailsPage() {
                 </tr>
               </thead>
               <tbody>
-                {(data.lines ?? []).map((line) => (
-
-                  <tr key={line.id} className="border-b last:border-none">
-                    <td className="py-2">{line.description}</td>
-                    <td className="py-2 text-right">
-                      ₽ {line.amount.toLocaleString()}
+                {lines.length === 0 ? (
+                  <tr>
+                    <td colSpan={2} className="text-center text-slate-500 py-3">
+                      No invoice lines found
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  lines.map((line) => (
+                    <tr key={line.id} className="border-b last:border-none">
+                      <td className="py-2">{line.description}</td>
+                      <td className="py-2 text-right">
+                        ₽ {line.amount.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
           {/* PDF Download */}
           <div className="mt-8 flex justify-end">
-            <a
-              href={`http://localhost:8080/api/invoices/${inv.id}/pdf`}
-              target="_blank"
+            <button
+              onClick={() => downloadPDF(inv, lines)}
               className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow hover:bg-slate-800"
             >
               Download PDF
-            </a>
+            </button>
           </div>
         </div>
       </div>
@@ -180,4 +193,31 @@ function Detail({ label, value }: { label: string; value: string }) {
       <div className="text-[15px] font-medium text-slate-800">{value}</div>
     </div>
   );
+}
+
+function downloadPDF(invoice: Invoice, lines: InvoiceLine[]) {
+  const doc = new jsPDF();
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.text(`Invoice #${invoice.invoice_number}`, 20, 20);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+  doc.text(`Issued at: ${invoice.issued_at.slice(0, 10)}`, 20, 30);
+  doc.text(`Amount: ₽ ${invoice.amount_total.toLocaleString()}`, 20, 40);
+  doc.text(`Period: ${invoice.period_start} — ${invoice.period_end}`, 20, 50);
+  doc.text(`Status: ${invoice.status.toUpperCase()}`, 20, 60);
+
+  let yOffset = 70;
+  doc.text("Description", 20, yOffset);
+  doc.text("Amount", 140, yOffset);
+  yOffset += 10;
+
+  lines.forEach((line) => {
+    doc.text(line.description, 20, yOffset);
+    doc.text(`₽ ${line.amount.toLocaleString()}`, 140, yOffset);
+    yOffset += 10;
+  });
+
+  doc.save(`invoice_${invoice.invoice_number}.pdf`);
 }
